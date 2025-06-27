@@ -1,0 +1,61 @@
+/* Thank you screen, llama, speech bubble, restart button */
+.thank-you-container {
+  text-align: center;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  position: relative;
+  z-index: 10;
+}
+.llama-container {
+  position: relative;
+  margin-bottom: 1rem;
+  max-width: 220px;
+}
+.llama-image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.speech-bubble {
+  position: absolute;
+  top: -15px;
+  right: -15px;
+  background-color: white;
+  border: 1px solid var(--primary-color);
+  border-radius: 15px;
+  padding: 0.4rem 0.6rem;
+  max-width: 120px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  font-size: 0.8rem;
+}
+.speech-bubble:after {
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  left: 15px;
+  border-width: 10px 6px 0;
+  border-style: solid;
+  border-color: white transparent transparent;
+  transform: rotate(0deg);
+}
+.speech-bubble:before {
+  content: "";
+  position: absolute;
+  bottom: -9px;
+  left: 14px;
+  border-width: 11px 7px 0;
+  border-style: solid;
+  border-color: var(--primary-color) transparent transparent;
+  transform: rotate(0deg);
+  z-index: -1;
+}
+.restart-button-container {
+  margin-top: 0.75rem;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}

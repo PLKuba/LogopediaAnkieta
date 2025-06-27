@@ -1,0 +1,320 @@
+/* Responsive: all media queries and responsive overrides */
+@media (max-width: 1024px) {
+  .container {
+    max-width: 90%;
+  }
+}
+@media (max-width: 768px) {
+  .phoneme-progress {
+    justify-content: flex-start;
+    padding: 1.5rem;
+  }
+  .phoneme-progress::before,
+  .phoneme-progress::after {
+    content: '';
+    min-width: 10px;
+  }
+  .progress-line {
+    left: 1.5rem;
+    right: 1.5rem;
+    width: calc(100% - 3rem);
+  }
+  .progress-counter {
+    padding: 0 0.5rem;
+    font-size: 0.85rem;
+    margin-top: 0.8rem;
+  }
+}
+@media (max-width: 600px) {
+  body {
+    font-size: 14px;
+  }
+  .container {
+    height: 100vh;
+    padding: 0.5rem;
+  }
+  .game-container {
+    padding-top: 90px;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    padding-bottom: 100px;
+  }
+  .phoneme-progress {
+    padding: 1rem;
+  }
+  .phoneme-bubble {
+    width: 45px;
+    height: 45px;
+    font-size: 1.1rem;
+    margin: 0 0.4rem;
+  }
+  .btn {
+    width: 80px;
+    height: 80px;
+  }
+  .btn-icon {
+    font-size: 1.8rem;
+  }
+  .svg-icon {
+    width: 28px;
+    height: 28px;
+  }
+  .btn-record .svg-icon {
+    width: 34px;
+    height: 34px;
+  }
+  .btn-nav .svg-icon {
+    width: 30px;
+    height: 30px;
+  }
+  .btn-record {
+    width: 90px;
+    height: 90px;
+  }
+  .btn-play, .btn-playback {
+    width: 150px;
+    height: 80px;
+  }
+  .btn-nav {
+    width: 80px;
+    height: 80px;
+  }
+  .btn-nav .btn-icon {
+    font-size: 2rem;
+  }
+  .btn-text {
+    font-size: 0.8rem;
+  }
+  .progress-counter {
+    font-size: 0.8rem;
+  }
+  .status, #status {
+    font-size: 32px !important;
+    line-height: 1.3 !important;
+  }
+  .edge-btn {
+    width: 50px;
+    height: 50px;
+    background-color: rgba(255, 255, 255, 0.9);
+    top: 15px;
+  }
+  .prev-btn {
+    left: 5px;
+  }
+  .next-btn {
+    right: 5px;
+  }
+  #status-container {
+    bottom: 45px;
+  }
+  #phoneme-display {
+    margin: 0 0 1rem;
+    min-height: 90px;
+  }
+  .playback-row {
+    margin-bottom: 3rem;
+  }
+  .submit-row {
+    margin-top: 0.1rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .btn-submit {
+    width: 180px;
+    height: 110px;
+    font-size: 1.2rem;
+    margin-bottom: 2.5rem;
+    box-sizing: border-box;
+  }
+  .upload-progress-container {
+    width: 140px;
+    margin-bottom: 1.5rem;
+  }
+  .llama-container {
+    max-width: 220px;
+  }
+  .speech-bubble {
+    max-width: 150px;
+    font-size: 0.9rem;
+    top: -15px;
+    right: -15px;
+  }
+  .email-description {
+    font-size: 0.9rem;
+  }
+  .email-ps {
+    font-size: 0.6rem;
+    color: var(--text-color);
+    opacity: 0.7;
+    margin-bottom: 0.6rem;
+    line-height: 1.1;
+    font-style: italic;
+  }
+  .control-row.submit-row {
+    margin-top: 0.1rem;
+    min-height: 90px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+}
+@media (max-width: 375px) and (max-height: 812px) {
+  .game-container {
+    padding: 1.5rem 3rem;
+    padding-bottom: 70px;
+    overflow-y: hidden;
+  }
+  .edge-btn {
+    width: 45px;
+    height: 45px;
+    top: 10px;
+  }
+  .edge-btn .svg-icon {
+    width: 22px;
+    height: 22px;
+  }
+  .btn-play, .btn-playback {
+    width: 130px;
+  }
+  .btn-submit {
+    margin-bottom: 1.5rem;
+    height: 80px;
+  }
+  #status-container {
+    bottom: 45px;
+    height: 28px;
+    min-height: 28px;
+  }
+  .status {
+    padding: 0.2rem 0.35rem;
+    font-size: 0.7rem;
+    max-width: 90%;
+  }
+  .progress-container {
+    min-height: 90px;
+  }
+  .control-row {
+    gap: 1rem;
+  }
+  .control-row.submit-row {
+    margin-top: 0.1rem;
+    min-height: 80px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+}
+@media (max-height: 670px) {
+  .game-container {
+    padding-bottom: 65px;
+  }
+  #status-container {
+    bottom: 45px;
+    height: 24px;
+    min-height: 24px;
+  }
+  .status {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.3rem;
+  }
+  .btn-submit {
+    margin-bottom: 0.8rem;
+  }
+}
+@media (max-width: 375px) {
+  #phoneme {
+    font-size: 4rem;
+  }
+  .game-container {
+    padding: 1.5rem 3rem;
+    padding-bottom: 85px;
+  }
+  .edge-btn {
+    width: 45px;
+    height: 45px;
+    top: 10px;
+  }
+  .edge-btn .svg-icon {
+    width: 22px;
+    height: 22px;
+  }
+  .btn-play, .btn-playback {
+    width: 130px;
+  }
+  .btn-submit {
+    margin-bottom: 2rem;
+  }
+  #status-container {
+    bottom: 45px;
+    height: 35px;
+    min-height: 35px;
+  }
+  .status {
+    padding: 0.25rem 0.4rem;
+    font-size: 0.75rem;
+  }
+}
+@media (max-height: 700px) {
+  .container {
+    padding: 0.25rem;
+  }
+  .game-container {
+    padding: 1rem 1rem 70px 1rem;
+  }
+  .btn-nav {
+    width: 80px;
+    height: 80px;
+  }
+  .svg-icon {
+    width: 26px;
+    height: 26px;
+  }
+  .btn-record .svg-icon {
+    width: 32px;
+    height: 32px;
+  }
+  .btn-nav .svg-icon {
+    width: 28px;
+    height: 28px;
+  }
+  footer {
+    padding: 0.25rem;
+  }
+  .progress-container {
+    min-height: 90px;
+    margin-bottom: 0.75rem;
+  }
+  .phoneme-progress {
+    padding: 0.8rem;
+  }
+  .phoneme-bubble {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+    margin: 0 0.3rem;
+  }
+  .progress-counter {
+    font-size: 0.7rem;
+    margin-top: 0.3rem;
+  }
+  .edge-btn {
+    width: 55px;
+    height: 55px;
+  }
+  #status-container {
+    top: 550px;
+  }
+  #phoneme-display {
+    margin: 0 0 0.75rem;
+    min-height: 80px;
+  }
+  .playback-row {
+    margin-bottom: 2rem;
+  }
+}
+@supports (height: 100dvh) {
+  .container {
+    height: 100dvh;
+  }
+}
