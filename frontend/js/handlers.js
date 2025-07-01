@@ -153,7 +153,7 @@ export function handlePlayback() {
     try {
         const audioBlob = state.getAudioBlob();
         if (!audioBlob) {
-            throw new Error("Brak nagrania do odtworzenia.");
+            throw new Error("Brak nagrania do odtwarzenia.");
         }
 
         const audioUrl = URL.createObjectURL(audioBlob);
@@ -245,6 +245,6 @@ export function handlePrev() {
     dom.DOMElements.submitBtn.classList.add("hidden");
 }
 
-export function handleSubmit() {
-    api.submitAllRecordings();
+export function handleSubmit(restartHandler) {
+    api.submitAllRecordings(restartHandler);
 }

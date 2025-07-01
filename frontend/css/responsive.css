@@ -137,8 +137,8 @@
   .speech-bubble {
     max-width: 150px;
     font-size: 0.9rem;
-    top: -15px;
-    right: -15px;
+    top: 15px;
+    right: 15px;
   }
   .email-description {
     font-size: 0.9rem;

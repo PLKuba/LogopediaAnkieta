@@ -26,6 +26,25 @@ export function initDOMElements() {
     return DOMElements;
 }
 
+export function showGameUI(shouldShow) {
+    const displayStyle = shouldShow ? '' : 'none';
+    const elements = [
+        DOMElements.progressContainer,
+        DOMElements.phonemeDisplay,
+        DOMElements.controls,
+        DOMElements.statusContainer
+    ];
+    elements.forEach(el => {
+        if (el) {
+            el.style.display = displayStyle;
+            // Also remove the hidden class if we are showing the UI
+            if (shouldShow) {
+                el.classList.remove('hidden');
+            }
+        }
+    });
+}
+
 export function setStatus(message, type = "") {
     if (!DOMElements.statusElement) {
         return;
@@ -89,6 +108,8 @@ export function updateNavigationButtons() {
         if (isLastPhoneme && isRecorded) {
             submitBtn.classList.remove('hidden');
             submitBtn.disabled = false;
+            submitBtn.classList.remove('disabled');
+            submitBtn.style.backgroundColor = ''; // Reset background color
         } else {
             submitBtn.classList.add('hidden');
             submitBtn.disabled = true;
@@ -110,10 +131,18 @@ export function applyFadeOutEffect() {
     DOMElements.statusContainer.classList.add('fade-out');
 }
 
+export function removeFadeOutEffect() {
+    DOMElements.progressContainer.classList.remove('fade-out');
+    DOMElements.phonemeDisplay.classList.remove('fade-out');
+    DOMElements.controls.classList.remove('fade-out');
+    DOMElements.statusContainer.classList.remove('fade-out');
+}
+
 export function showUploadProgress() {
     const { uploadProgressContainer } = DOMElements;
     if (uploadProgressContainer) {
         uploadProgressContainer.classList.remove('hidden');
+        uploadProgressContainer.style.display = '';
     }
 }
 
@@ -125,9 +154,16 @@ export function updateUploadProgress(progress) {
 }
 
 export function hideUploadProgress() {
-    const { uploadProgressContainer } = DOMElements;
+    const { uploadProgressContainer, uploadProgressBar, submitBtn } = DOMElements;
     if (uploadProgressContainer) {
         uploadProgressContainer.classList.add('hidden');
+        uploadProgressContainer.style.display = 'none';
+    }
+    if (uploadProgressBar) {
+        uploadProgressBar.style.width = '0%';
+    }
+    if (submitBtn) {
+        submitBtn.style.display = 'block';
     }
 }
 
@@ -151,39 +187,83 @@ export function createThankYouScreen(restartHandler, emailHandler) {
     thankYouContainer.className = 'thank-you-container';
 
     thankYouContainer.innerHTML = `
-        <div class="llama-container">
-            <img src="assets/png/llama.png" alt="Lama" class="llama-image">
-            <div class="speech-bubble">Dzięki za twój głos!</div>
-        </div>
-        <div class="email-form">
-            <p class="email-description">Podaj nam swojego maila, a poinformujemy cię o wynikach naszych badań!</p>
-            <p class="email-ps">PS. Obiecujemy jednego maila, bez zbędnego spamu :)</p>
-            <div class="email-input-container">
-                <input type="email" id="email-input" class="email-input" placeholder="Twój adres email">
-                <button id="email-submit" class="btn-email-submit" disabled>Wyślij</button>
+        <div class="thank-you-content" style="display: flex; flex-direction: column; align-items: center;">
+            <div class="llama-container" style="position: relative; display: flex; flex-direction: column; align-items: center;">
+                <img src="assets/png/llama.png" alt="Lama" class="llama-image" style="max-width: 180px;">
+                <div class="speech-bubble">Udało się!</div>
             </div>
-        </div>
-        <div class="restart-button-container">
-            <button id="restart-btn" class="btn btn-primary">Rozpocznij ponownie</button>
+            <h2 style="color: var(--text-primary-color); margin-top: 1rem;">Dzięki!</h2>
+            
+            <div class="email-form" style="margin-bottom: 2rem; width: 100%; max-width: 420px;">
+                <p class="email-description" style="margin-bottom: 1rem;">Chcesz otrzymać powiadomienie o wynikach badania? Zostaw nam swój adres email.</p>
+                <p class="email-ps">PS. Nie wysyłamy spamu, obiecujemy!</p>
+                <div class="email-input-container">
+                    <input type="email" id="email-input" class="email-input" placeholder="twój@email.com">
+                    <button id="email-submit" class="btn-email-submit">Wyślij</button>
+                </div>
+            </div>
+
+            <div class="restart-button-container">
+                <button id="restart-btn" class="btn btn-primary">Zacznij ponownie</button>
+            </div>
         </div>
     `;
 
     DOMElements.gameContainer.appendChild(thankYouContainer);
 
-    // Email validation logic for enabling/disabling the button
-    const emailInput = document.getElementById('email-input');
-    const emailSubmit = document.getElementById('email-submit');
-    emailInput.addEventListener('input', () => {
-        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (re.test(emailInput.value.trim())) {
-            emailSubmit.disabled = false;
-        } else {
-            emailSubmit.disabled = true;
-        }
-    });
-
     document.getElementById('restart-btn').addEventListener('click', restartHandler);
     document.getElementById('email-submit').addEventListener('click', emailHandler);
+}
+
+export function removeThankYouScreen() {
+    const thankYouContainer = document.getElementById('thank-you-container');
+    if (thankYouContainer) {
+        thankYouContainer.remove();
+    }
+}
+
+export function createStartScreen(startHandler) {
+    showGameUI(false);
+
+    const startContainer = document.createElement('div');
+    startContainer.id = 'start-container';
+    startContainer.style.textAlign = 'center';
+    startContainer.style.padding = '2rem';
+    startContainer.style.display = 'flex';
+    startContainer.style.flexDirection = 'column';
+    startContainer.style.alignItems = 'center';
+    startContainer.style.justifyContent = 'center';
+    startContainer.style.height = '100%';
+
+
+    startContainer.innerHTML = `
+        <div class="llama-container" style="margin-bottom: 1rem;">
+             <img src="assets/png/llama.png" alt="Lama" class="llama-image" style="max-width: 150px; margin-bottom: 1rem;">
+        </div>
+        <h2 style="margin-bottom: 1rem; color: var(--text-primary-color);">Hejo! Jestem lama</h2>
+        <p style="margin-bottom: 2rem; font-size: 1.1rem; max-width: 400px; color: var(--text-secondary-color);">Chcesz być moim pomocnikiem i powiedzieć kilka głosek?</p>
+        <button id="start-app-btn" class="btn btn-primary" style="padding: 1rem 2rem; font-size: 1.1rem;">Zaczynamy!</button>
+    `;
+
+    DOMElements.gameContainer.prepend(startContainer);
+
+    document.getElementById('start-app-btn').addEventListener('click', startHandler, { once: true });
+}
+
+export function toggleStartButtonLoading(isLoading) {
+    const startButton = document.getElementById('start-app-btn');
+    if (!startButton) return;
+
+    if (isLoading) {
+        startButton.disabled = true;
+        startButton.innerHTML = `
+            <span class="loader"></span>
+            Ładowanie...
+        `;
+    } else {
+        startButton.disabled = false;
+        startButton.innerHTML = 'Zaczynamy!';
+    }
 }
 
 export function initializeProgressBar() {
@@ -320,15 +400,42 @@ export function addCustomStyles() {
         .email-input-container {
             display: flex;
             align-items: center; /* Vertically aligns the items in the middle */
-            gap: 5px; /* Optional: adds a small space between the input and button */
+            gap: 5px;
         }
 
         .email-input {
-            flex-grow: 1; /* Allows the input field to take up the available space */
+            flex: 1;
+            padding: 0.75rem;
+            font-size: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .email-input:focus {
+            border-color: var(--primary-color);
         }
 
         .btn-email-submit {
-            flex-shrink: 0; /* Prevents the button from shrinking */
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            color: #fff;
+            background-color: var(--primary-color);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .btn-email-submit:hover {
+            background-color: var(--primary-color-hover);
+        }
+
+        .email-ps {
+            font-size: 0.5rem;
+            color: #D3D3D3;
+            margin-top: 0.5rem;
         }
 
         /* --- END: CSS for Email Input Layout --- */
@@ -336,7 +443,7 @@ export function addCustomStyles() {
     document.head.appendChild(style);
 }
 
-export function setMicrophoneAccessUI(isGranted) {
+export function setMicrophoneAccessUI(isGranted, message = "", hideRetryButton = false) {
     const controls = document.querySelectorAll('.btn, .btn-submit, .btn-nav, .btn-play, .btn-playback');
     controls.forEach(btn => {
         // Don't disable the mic access button
@@ -368,12 +475,20 @@ export function setMicrophoneAccessUI(isGranted) {
             micOverlay.innerHTML = `
                 <div style="max-width: 350px; width: 90vw; text-align: center; display: flex; flex-direction: column; align-items: center;">
                   <h2 style="color: var(--error-color, #FC5C65); margin-bottom: 1rem;">Brak dostępu do mikrofonu</h2>
-                  <p style="font-size: 1.1rem; margin-bottom: 1.5rem;">Aby korzystać z aplikacji, musisz zezwolić na dostęp do mikrofonu.<br>Proszę kliknąć poniższy przycisk, aby spróbować ponownie.</p>
-                  <button id="mic-access-btn" class="btn btn-primary" style="margin-top: 1rem; display: block; margin-left: auto; margin-right: auto; padding: 1.1rem 2.5rem; font-size: 1.05rem; max-width: 100%; width: 100%; white-space: normal; word-break: break-word; line-height: 1.25; box-sizing: border-box;">Zezwól na dostęp do mikrofonu</button>
+                  <p id="mic-access-message" style="font-size: 1.1rem; margin-bottom: 1.5rem;">${message || 'Aby korzystać z aplikacji, musisz zezwolić na dostęp do mikrofonu.<br>Proszę kliknąć poniższy przycisk, aby spróbować ponownie.'}</p>
+                  <button id="mic-access-btn" class="btn btn-primary" style="margin-top: 1rem; display: ${hideRetryButton ? 'none' : 'block'}; margin-left: auto; margin-right: auto; padding: 1.1rem 2.5rem; font-size: 1.05rem; max-width: 100%; width: 100%; white-space: normal; word-break: break-word; line-height: 1.25; box-sizing: border-box;">Zezwól na dostęp do mikrofonu</button>
                 </div>
             `;
             document.body.appendChild(micOverlay);
         } else {
+            const messageEl = document.getElementById('mic-access-message');
+            const buttonEl = document.getElementById('mic-access-btn');
+            if (messageEl) {
+                messageEl.innerHTML = message || 'Aby korzystać z aplikacji, musisz zezwolić na dostęp do mikrofonu.<br>Proszę kliknąć poniższy przycisk, aby spróbować ponownie.';
+            }
+            if(buttonEl) {
+                buttonEl.style.display = hideRetryButton ? 'none' : 'block';
+            }
             micOverlay.style.display = 'flex';
         }
     } else if (micOverlay) {
@@ -382,14 +497,43 @@ export function setMicrophoneAccessUI(isGranted) {
 }
 
 export async function requestMicrophoneAccessAndUI() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.error("getUserMedia not supported on this browser!");
+        // Display a message to the user that their browser is not supported.
+        setMicrophoneAccessUI(false, "Twoja przeglądarka nie wspiera nagrywania dźwięku. Spróbuj użyć innej przeglądarki, np. Chrome lub Safari.", true);
+        return false;
+    }
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         state.setMicrophoneStream(stream);
         setMicrophoneAccessUI(true);
         return true;
     } catch (error) {
-        setMicrophoneAccessUI(false);
-        // Optionally log error, but do not rethrow
+        console.error("Error requesting microphone access:", error);
+        if (navigator.permissions) {
+            try {
+                const permissionStatus = await navigator.permissions.query({ name: 'microphone' });
+                
+                const handlePermissionChange = () => {
+                    if (permissionStatus.state === 'denied') {
+                        const message = `Wygląda na to, że dostęp do mikrofonu został zablokowany. <br><br> Aby kontynuować, musisz ręcznie włączyć uprawnienia w ustawieniach przeglądarki (zazwyczaj ikona kłódki obok paska adresu).`;
+                        setMicrophoneAccessUI(false, message, true); // hideRetryButton = true
+                    } else {
+                        setMicrophoneAccessUI(false);
+                    }
+                };
+
+                permissionStatus.onchange = handlePermissionChange;
+                handlePermissionChange(); // Initial check
+
+            } catch (permError) {
+                console.error("Could not query permissions:", permError);
+                setMicrophoneAccessUI(false);
+            }
+        } else {
+            // Fallback for browsers that don't support Permissions API
+            setMicrophoneAccessUI(false);
+        }
         return false;
     }
 }

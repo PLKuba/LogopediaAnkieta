@@ -1,4 +1,3 @@
-import { supabase } from './supabaseClient.js';
 import * as state from './state.js';
 import * as dom from './dom.js';
 import { BACKEND_URL } from './constants.js';
@@ -7,11 +6,13 @@ const delay = ms => new Promise(res => setTimeout(res, ms));
 
 export async function fetchPhonemes() {
     try {
-        const { data, error } = await supabase.rpc('get_survey_data');
-        if (error) throw error;
-        // Sort by order_id before mapping to phoneme
-        const sorted = [...data].sort((a, b) => a.order_id - b.order_id);
-        const phonemes = sorted.map(p => p.item);
+        const response = await fetch(`${BACKEND_URL}/phonemes`);
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Error fetching phonemes:", errorText);
+            throw new Error(`Failed to fetch phonemes: ${response.statusText}`);
+        }
+        const phonemes = await response.json();
         state.setPhonemes(phonemes);
         return phonemes;
     } catch (error) {
@@ -21,7 +22,7 @@ export async function fetchPhonemes() {
     }
 }
 
-export async function submitAllRecordings() {
+export async function submitAllRecordings(restartHandler) {
     if (state.getIsUploading() || state.getHasSubmitted()) {
         return;
     }
@@ -34,11 +35,10 @@ export async function submitAllRecordings() {
         uploadProgress.style.display = 'block';
     }
 
-    // Disable submit button and make it grey
+    // Disable submit button and add disabled class
     const submitBtn = document.getElementById('submit-btn');
     if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.style.backgroundColor = '#bbb'; // grey
         submitBtn.classList.add('disabled');
     }
 
@@ -93,7 +93,7 @@ export async function submitAllRecordings() {
             dom.applyFadeOutEffect();
 
             await delay(1300);
-            dom.createThankYouScreen(() => location.reload(), submitEmail);
+            dom.createThankYouScreen(restartHandler, submitEmail);
 
         } else {
             dom.setStatus(`Wysłano ${uploadedCount} z ${totalRecordings} nagrań. ${failedCount} nie udało się wysłać.`, "error");
@@ -101,7 +101,6 @@ export async function submitAllRecordings() {
             // Re-enable submit button on error
             if (submitBtn) {
                 submitBtn.disabled = false;
-                submitBtn.style.backgroundColor = '';
                 submitBtn.classList.remove('disabled');
             }
         }
@@ -113,7 +112,6 @@ export async function submitAllRecordings() {
         // Re-enable submit button on error
         if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.style.backgroundColor = '';
             submitBtn.classList.remove('disabled');
         }
     } finally {

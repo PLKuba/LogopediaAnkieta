@@ -1,3 +1,11 @@
+function generateSessionId() {
+    // https://stackoverflow.com/a/2117523/220636
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        let r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
 let phonemes = [];
 let currentPhonemeIndex = 0;
 let completedPhonemes = 0;
@@ -10,6 +18,7 @@ let isUploading = false;
 let recordings = {};
 let hasSubmitted = false;
 let autoStopTimeout = null;
+let sessionId = generateSessionId();
 
 export function getPhonemes() { return phonemes; }
 export function getCurrentPhonemeIndex() { return currentPhonemeIndex; }
@@ -23,6 +32,7 @@ export function getIsUploading() { return isUploading; }
 export function getRecordings() { return recordings; }
 export function getAutoStopTimeout() { return autoStopTimeout; }
 export function getHasSubmitted() { return hasSubmitted; }
+export function getSessionId() { return sessionId; }
 
 export function setPhonemes(newPhonemes) {
     phonemes = newPhonemes;
@@ -70,4 +80,14 @@ export function setAutoStopTimeout(timeout) {
 
 export function setHasSubmitted(submitted) {
     hasSubmitted = submitted;
+}
+
+export function resetStateForRestart() {
+    recordings = {};
+    currentPhonemeIndex = 0;
+    isRecording = false;
+    isUploading = false;
+    hasSubmitted = false;
+    audioBlob = null;
+    sessionId = generateSessionId();
 }

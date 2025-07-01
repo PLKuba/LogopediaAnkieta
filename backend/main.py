@@ -6,17 +6,18 @@ from b2sdk.v2 import InMemoryAccountInfo, B2Api
 from supabase import create_client, Client
 from postgrest.exceptions import APIError
 
+from typing import List
 from pathlib import Path
 import shutil
 import unicodedata
 import io
+import os
 
 from models import *
 
 
 app = FastAPI()
 
-# CORS for local frontend testing
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -26,8 +27,8 @@ app.add_middleware(
 )
 
 # === Backblaze B2 CONFIGURATION ===
-B2_APPLICATION_KEY_ID = "0034cef410761b40000000004"
-B2_APPLICATION_KEY = "K003VGIElWb8XnzfaUz2QFvl7cwo/3I"
+B2_APPLICATION_KEY_ID = os.getenv("B2_APPLICATION_KEY_ID")
+B2_APPLICATION_KEY = os.getenv("K003VGIElWb8XnzfaUz2QFvl7cwo/3I")
 B2_SAMPLES_BUCKET_NAME = "GaguAudioSamples"
 B2_EXAMPLES_BUCKET_NAME = "GaguAudioExamples"
 
@@ -37,9 +38,12 @@ b2_api.authorize_account("production", B2_APPLICATION_KEY_ID, B2_APPLICATION_KEY
 audio_samples_bucket = b2_api.get_bucket_by_name(B2_SAMPLES_BUCKET_NAME)
 audio_examples_bucket = b2_api.get_bucket_by_name(B2_EXAMPLES_BUCKET_NAME)
 
-SUPABASE_URL: str = "https://nmpfvodpuzerozsjtrch.supabase.co"
-SUPABASE_KEY: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5tcGZ2b2RwdXplcm96c2p0cmNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg0NDIyMjgsImV4cCI6MjA2NDAxODIyOH0.4nZtUA7iOijcRuBUOkMrzi38bBljvjTknauDcEOfxzY"
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+SUPABASE_URL: str = os.getenv("SUPABASE_URL")
+SUPABASE_KEY_PRIVATE: str = os.getenv("SUPABASE_KEY_PRIVATE")
+SUPABASE_KEY_PUBLIC: str = os.getenv("SUPABASE_KEY_PUBLIC")
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY_PRIVATE)
+supabase_public: Client = create_client(SUPABASE_URL, SUPABASE_KEY_PUBLIC)
 
 
 @app.get("/")
@@ -94,7 +98,7 @@ async def create_user(user: UserCreate):
     # 1) Try to fetch an existing user
     try:
         existing_resp = (
-            supabase
+            supabase_public
             .from_("users")
             .select("*")
             .eq("email", user.email)
@@ -109,13 +113,13 @@ async def create_user(user: UserCreate):
 
     # 2) Not found → call your insert_user RPC
     try:
-        insert_resp = supabase.rpc("insert_user", {"p_email": user.email}).execute()
+        insert_resp = supabase_public.rpc("insert_user", {"p_email": user.email}).execute()
     except APIError as err:
         error_info = err.args[0]
         # handle unique-violation race‐condition (Postgres code 23505)
         if error_info.get("code") == "23505":
             refetch = (
-                supabase
+                supabase_public
                 .from_("users")
                 .select("*")
                 .eq("email", user.email)
@@ -127,3 +131,33 @@ async def create_user(user: UserCreate):
 
     # 3) Success: insert_resp.data is a list containing the new row
     return insert_resp.data[0]
+
+
+@app.get("/phonemes", response_model=List[str])
+async def get_phonemes() -> List[str]:
+    """
+    Fetch survey data via Supabase RPC, sort by order_id, and return the 'item'
+    field from each record.
+    """
+    try:
+        # Call the get_survey_data stored procedure
+        resp = supabase.rpc("get_survey_data").execute()
+        data = resp.data or []  # resp is an APIResponse with .data on success :contentReference[oaicite:0]{index=0}
+
+        # Sort by order_id, then extract the 'item' field
+        sorted_data = sorted(data, key=lambda rec: rec.get("order_id", 0))
+        phonemes = [rec.get("item") for rec in sorted_data]
+
+        return phonemes
+
+    except APIError as e:
+        # supabase-py raises APIError for non-2xx status codes :contentReference[oaicite:1]{index=1}
+        raise HTTPException(
+            status_code=e.status_code if hasattr(e, "status_code") else 500,
+            detail="Nie udało się załadować głosek. Spróbuj odświeżyć stronę."
+        )
+    except Exception as err:
+        raise HTTPException(
+            status_code=500,
+            detail="Nie udało się załadować głosek. Spróbuj odświeżyć stronę."
+        )

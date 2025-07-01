@@ -22,8 +22,8 @@
 }
 .speech-bubble {
   position: absolute;
-  top: -15px;
-  right: -15px;
+  top: 15px;
+  right: 15px;
   background-color: white;
   border: 1px solid var(--primary-color);
   border-radius: 15px;
