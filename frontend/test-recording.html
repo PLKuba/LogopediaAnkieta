@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recording Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 600px; 
+            margin: 50px auto; 
+            padding: 20px; 
+        }
+        button { 
+            padding: 10px 20px; 
+            margin: 10px; 
+            font-size: 16px; 
+        }
+        .status { 
+            margin: 20px 0; 
+            padding: 10px; 
+            border-radius: 5px; 
+        }
+        .info { background: #e3f2fd; color: #1565c0; }
+        .success { background: #e8f5e8; color: #2e7d32; }
+        .error { background: #ffebee; color: #c62828; }
+    </style>
+</head>
+<body>
+    <h1>Recording API Test</h1>
+    
+    <div id="browser-info" class="status info">
+        <strong>Browser Detection:</strong>
+        <div id="browser-details"></div>
+    </div>
+    
+    <div id="feature-support" class="status info">
+        <strong>Feature Support:</strong>
+        <div id="features"></div>
+    </div>
+    
+    <button onclick="testMediaRecorder()">Test MediaRecorder</button>
+    <button onclick="testWebAudio()">Test Web Audio API</button>
+    <button onclick="requestMic()">Request Microphone</button>
+    
+    <div id="status" class="status"></div>
+    
+    <audio id="playback" controls style="width: 100%; margin: 20px 0;"></audio>
+    
+    <script type="module">
+        // Safari detection
+        function isSafari() {
+            return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        }
+        
+        // Update browser info
+        document.getElementById('browser-details').innerHTML = `
+            User Agent: ${navigator.userAgent}<br>
+            Is Safari: ${isSafari()}<br>
+            Platform: ${navigator.platform}
+        `;
+        
+        // Check feature support
+        const features = [
+            { name: 'MediaRecorder', supported: typeof MediaRecorder !== 'undefined' },
+            { name: 'AudioContext', supported: typeof (window.AudioContext || window.webkitAudioContext) !== 'undefined' },
+            { name: 'getUserMedia', supported: typeof navigator.mediaDevices?.getUserMedia !== 'undefined' },
+            { name: 'AudioWorklet', supported: typeof AudioContext.prototype.audioWorklet !== 'undefined' }
+        ];
+        
+        document.getElementById('features').innerHTML = features
+            .map(f => `${f.name}: ${f.supported ? '✅' : '❌'}`)
+            .join('<br>');
+        
+        let currentStream = null;
+        
+        window.requestMic = async function() {
+            try {
+                currentStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                setStatus('Microphone access granted!', 'success');
+            } catch (error) {
+                setStatus(`Microphone error: ${error.message}`, 'error');
+            }
+        };
+        
+        window.testMediaRecorder = async function() {
+            if (!currentStream) {
+                setStatus('Please request microphone access first', 'error');
+                return;
+            }
+            
+            try {
+                setStatus('Starting MediaRecorder test...', 'info');
+                
+                const mimeTypes = ['audio/wav', 'audio/mp4', 'audio/webm', 'audio/ogg'];
+                let supportedType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type));
+                
+                if (!supportedType) {
+                    throw new Error('No supported MIME types');
+                }
+                
+                const chunks = [];
+                const recorder = new MediaRecorder(currentStream, { mimeType: supportedType });
+                
+                recorder.ondataavailable = (e) => chunks.push(e.data);
+                recorder.onstop = () => {
+                    const blob = new Blob(chunks, { type: supportedType });
+                    setStatus(`MediaRecorder: ${blob.size} bytes recorded`, blob.size > 0 ? 'success' : 'error');
+                    
+                    if (blob.size > 0) {
+                        const audio = document.getElementById('playback');
+                        audio.src = URL.createObjectURL(blob);
+                    }
+                };
+                
+                recorder.start();
+                setTimeout(() => recorder.stop(), 2000);
+                
+            } catch (error) {
+                setStatus(`MediaRecorder error: ${error.message}`, 'error');
+            }
+        };
+        
+        window.testWebAudio = async function() {
+            if (!currentStream) {
+                setStatus('Please request microphone access first', 'error');
+                return;
+            }
+            
+            try {
+                setStatus('Starting Web Audio API test...', 'info');
+                
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 44100 });
+                const source = audioContext.createMediaStreamSource(currentStream);
+                const processor = audioContext.createScriptProcessor(4096, 1, 1);
+                
+                const recordedData = [];
+                
+                processor.onaudioprocess = (e) => {
+                    const inputData = e.inputBuffer.getChannelData(0);
+                    recordedData.push(...inputData);
+                };
+                
+                source.connect(processor);
+                processor.connect(audioContext.destination);
+                
+                setTimeout(() => {
+                    processor.disconnect();
+                    source.disconnect();
+                    audioContext.close();
+                    
+                    // Create WAV blob
+                    const buffer = new Float32Array(recordedData);
+                    const wavBlob = createWAVBlob(buffer, 44100);
+                    
+                    setStatus(`Web Audio API: ${wavBlob.size} bytes recorded`, wavBlob.size > 0 ? 'success' : 'error');
+                    
+                    if (wavBlob.size > 0) {
+                        const audio = document.getElementById('playback');
+                        audio.src = URL.createObjectURL(wavBlob);
+                    }
+                }, 2000);
+                
+            } catch (error) {
+                setStatus(`Web Audio API error: ${error.message}`, 'error');
+            }
+        };
+        
+        function createWAVBlob(buffer, sampleRate) {
+            const length = buffer.length;
+            const arrayBuffer = new ArrayBuffer(44 + length * 2);
+            const view = new DataView(arrayBuffer);
+            
+            // WAV header
+            const writeString = (offset, string) => {
+                for (let i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            };
+            
+            writeString(0, 'RIFF');
+            view.setUint32(4, 36 + length * 2, true);
+            writeString(8, 'WAVE');
+            writeString(12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeString(36, 'data');
+            view.setUint32(40, length * 2, true);
+            
+            // Convert float samples to 16-bit PCM
+            let offset = 44;
+            for (let i = 0; i < length; i++) {
+                const sample = Math.max(-1, Math.min(1, buffer[i]));
+                view.setInt16(offset, sample * 0x7FFF, true);
+                offset += 2;
+            }
+            
+            return new Blob([arrayBuffer], { type: 'audio/wav' });
+        }
+        
+        function setStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+        }
+    </script>
+</body>
+</html>

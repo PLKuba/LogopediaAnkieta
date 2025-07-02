@@ -518,6 +518,38 @@ export async function requestMicrophoneAccessAndUI() {
         setMicrophoneAccessUI(false, "Twoja przeglądarka nie wspiera nagrywania dźwięku. Spróbuj użyć innej przeglądarki, np. Chrome lub Safari.", true);
         return false;
     }
+
+    // First, check if we already have permission without triggering a prompt
+    if (navigator.permissions) {
+        try {
+            const permissionStatus = await navigator.permissions.query({ name: 'microphone' });
+            console.log('Current microphone permission status:', permissionStatus.state);
+            
+            if (permissionStatus.state === 'granted') {
+                // Permission already granted, get the stream directly
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    state.setMicrophoneStream(stream);
+                    setMicrophoneAccessUI(true);
+                    return true;
+                } catch (error) {
+                    console.error("Error getting microphone stream despite granted permission:", error);
+                    // Fall through to normal permission request flow
+                }
+            } else if (permissionStatus.state === 'denied') {
+                // Permission explicitly denied
+                const message = `Wygląda na to, że dostęp do mikrofonu został zablokowany. <br><br> Aby kontynuować, musisz ręcznie włączyć uprawnienia w ustawieniach przeglądarki (zazwyczaj ikona kłódki obok paska adresu).`;
+                setMicrophoneAccessUI(false, message, true);
+                return false;
+            }
+            // If state is 'prompt', continue to normal flow below
+        } catch (permError) {
+            console.warn("Could not query permissions, falling back to direct request:", permError);
+            // Fall through to normal permission request flow
+        }
+    }
+
+    // Normal permission request flow (for 'prompt' state or browsers without Permissions API)
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         state.setMicrophoneStream(stream);

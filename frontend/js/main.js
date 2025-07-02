@@ -65,6 +65,7 @@ const restartApp = () => {
 };
 
 const startApp = async () => {
+    console.log('Starting app15...');
     try {
         toggleStartButtonLoading(true);
 

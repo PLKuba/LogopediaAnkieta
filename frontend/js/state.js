@@ -19,6 +19,8 @@ let recordings = {};
 let hasSubmitted = false;
 let autoStopTimeout = null;
 let sessionId = generateSessionId();
+let webAudioRecorder = null;
+let mediaRecorderFailureCount = 0;
 
 export function getPhonemes() { return phonemes; }
 export function getCurrentPhonemeIndex() { return currentPhonemeIndex; }
@@ -33,6 +35,8 @@ export function getRecordings() { return recordings; }
 export function getAutoStopTimeout() { return autoStopTimeout; }
 export function getHasSubmitted() { return hasSubmitted; }
 export function getSessionId() { return sessionId; }
+export function getWebAudioRecorder() { return webAudioRecorder; }
+export function getMediaRecorderFailureCount() { return mediaRecorderFailureCount; }
 
 export function setPhonemes(newPhonemes) {
     phonemes = newPhonemes;
@@ -82,6 +86,14 @@ export function setHasSubmitted(submitted) {
     hasSubmitted = submitted;
 }
 
+export function setWebAudioRecorder(recorder) {
+    webAudioRecorder = recorder;
+}
+
+export function setMediaRecorderFailureCount(count) {
+    mediaRecorderFailureCount = count;
+}
+
 export function resetStateForRestart() {
     recordings = {};
     currentPhonemeIndex = 0;
@@ -90,4 +102,6 @@ export function resetStateForRestart() {
     hasSubmitted = false;
     audioBlob = null;
     sessionId = generateSessionId();
+    webAudioRecorder = null;
+    mediaRecorderFailureCount = 0;
 }
