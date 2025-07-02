@@ -28,7 +28,7 @@ app.add_middleware(
 
 # === Backblaze B2 CONFIGURATION ===
 B2_APPLICATION_KEY_ID = os.getenv("B2_APPLICATION_KEY_ID")
-B2_APPLICATION_KEY = os.getenv("K003VGIElWb8XnzfaUz2QFvl7cwo/3I")
+B2_APPLICATION_KEY = os.getenv("B2_APPLICATION_KEY")
 B2_SAMPLES_BUCKET_NAME = "GaguAudioSamples"
 B2_EXAMPLES_BUCKET_NAME = "GaguAudioExamples"
 
