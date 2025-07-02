@@ -158,11 +158,25 @@ export function handlePlayback() {
 
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
+
+        audio.onplay = () => {
+            dom.updateNavigationButtons(true); // Disable nav buttons
+            dom.toggleActionButtons(true); // Disable action buttons
+        };
+
+        audio.onended = () => {
+            dom.updateNavigationButtons(false); // Enable nav buttons
+            dom.toggleActionButtons(false); // Enable action buttons
+            dom.setStatus("");
+        };
+
         audio.onerror = () => {
             console.error("Error loading audio blob for playback.");
             dom.setStatus("Nie można odtworzyć nagrania.", "error");
+            dom.updateNavigationButtons(false); // Re-enable buttons on error
+            dom.toggleActionButtons(false);
         };
-        audio.onended = () => dom.setStatus("");
+
         audio.play();
     } catch (error) {
         console.error("Error playing recording:", error);

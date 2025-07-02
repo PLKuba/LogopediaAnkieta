@@ -175,7 +175,7 @@ export async function submitEmail() {
                 showInlineError(errorData.detail || 'Błąd podczas zapisywania adresu email.');
             }
         } else {
-            showSuccess('Dziękujemy! Poinformujemy Cię o wynikach badań.');
+            showSuccess('Poinformujemy Cię o wynikach badań.');
         }
     } catch (error) {
         console.error('Error submitting email:', error);

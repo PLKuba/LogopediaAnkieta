@@ -76,8 +76,17 @@ export function updatePhonemeDisplay() {
     }
 }
 
-export function updateNavigationButtons() {
+export function updateNavigationButtons(isPlaying) {
     const { nextBtn, prevBtn, submitBtn, playbackBtn } = DOMElements;
+
+    if (isPlaying) {
+        if (nextBtn) nextBtn.disabled = true;
+        if (prevBtn) prevBtn.disabled = true;
+        if (submitBtn) submitBtn.disabled = true;
+        // playbackBtn should remain enabled
+        return;
+    }
+
     if (state.getIsRecording()) {
         if (nextBtn) nextBtn.disabled = true;
         if (prevBtn) prevBtn.disabled = true;
@@ -136,6 +145,12 @@ export function removeFadeOutEffect() {
     DOMElements.phonemeDisplay.classList.remove('fade-out');
     DOMElements.controls.classList.remove('fade-out');
     DOMElements.statusContainer.classList.remove('fade-out');
+}
+
+export function toggleActionButtons(disabled) {
+    const { recordBtn, playBtn } = DOMElements;
+    if (recordBtn) recordBtn.disabled = disabled;
+    if (playBtn) playBtn.disabled = disabled;
 }
 
 export function showUploadProgress() {
@@ -204,7 +219,7 @@ export function createThankYouScreen(restartHandler, emailHandler) {
             </div>
 
             <div class="restart-button-container">
-                <button id="restart-btn" class="btn btn-primary">Zacznij ponownie</button>
+                <button id="restart-btn" class="btn btn-primary btn-restart">Zacznij ponownie</button>
             </div>
         </div>
     `;
@@ -242,7 +257,7 @@ export function createStartScreen(startHandler) {
         </div>
         <h2 style="margin-bottom: 1rem; color: var(--text-primary-color);">Hejo! Jestem lama</h2>
         <p style="margin-bottom: 2rem; font-size: 1.1rem; max-width: 400px; color: var(--text-secondary-color);">Chcesz być moim pomocnikiem i powiedzieć kilka głosek?</p>
-        <button id="start-app-btn" class="btn btn-primary" style="padding: 1rem 2rem; font-size: 1.1rem;">Zaczynamy!</button>
+        <button id="start-app-btn" class="btn btn-primary btn-start">Zaczynamy!</button>
     `;
 
     DOMElements.gameContainer.prepend(startContainer);
