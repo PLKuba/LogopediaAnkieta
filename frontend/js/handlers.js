@@ -21,7 +21,28 @@ async function startRecording() {
             await requestMicrophonePermission();
         }
 
-        const mediaRecorder = new MediaRecorder(state.getMicrophoneStream());
+        const mimeTypes = [
+            'audio/mp4',
+            'audio/webm;codecs=opus',
+            'audio/webm',
+            'audio/ogg;codecs=opus',
+            'audio/wav'
+        ];
+        let supportedMimeType = '';
+        for (const type of mimeTypes) {
+            if (MediaRecorder.isTypeSupported(type)) {
+                supportedMimeType = type;
+                break;
+            }
+        }
+
+        if (!supportedMimeType) {
+            console.error("No supported mimeType found for MediaRecorder");
+            dom.setStatus("Twoja przeglądarka nie wspiera nagrywania w wymaganym formacie.", "error");
+            return;
+        }
+
+        const mediaRecorder = new MediaRecorder(state.getMicrophoneStream(), { mimeType: supportedMimeType });
         state.setMediaRecorder(mediaRecorder);
         state.setAudioChunks([]);
 
@@ -30,7 +51,7 @@ async function startRecording() {
         };
 
         mediaRecorder.onstop = () => {
-            const audioBlob = new Blob(state.getAudioChunks(), { type: 'audio/webm' });
+            const audioBlob = new Blob(state.getAudioChunks(), { type: supportedMimeType });
             state.setAudioBlob(audioBlob);
             dom.DOMElements.playbackBtn.disabled = false;
             state.setIsRecording(false);
@@ -128,6 +149,34 @@ export async function preloadPerfectPronunciationAudio(phonemes) {
     }
 }
 
+function navigateToPhoneme(newIndex) {
+    state.setCurrentPhonemeIndex(newIndex);
+    state.setAudioBlob(null);
+    state.setAudioChunks([]);
+
+    dom.updatePhonemeDisplay();
+    dom.updateProgress();
+    dom.scrollCurrentPhonemeIntoView();
+
+    const recordings = state.getRecordings();
+    const currentPhoneme = state.getPhonemes()[newIndex];
+    const existingRecording = recordings[currentPhoneme];
+    if (existingRecording) {
+        state.setAudioBlob(existingRecording);
+    }
+
+    dom.updateNavigationButtons();
+    dom.DOMElements.playbackBtn.disabled = !state.getAudioBlob();
+
+    const isLastPhoneme = newIndex === state.getPhonemes().length - 1;
+    if (isLastPhoneme && state.getAudioBlob()) {
+        dom.DOMElements.submitBtn.disabled = false;
+        dom.DOMElements.submitBtn.classList.remove("hidden");
+    } else {
+        dom.DOMElements.submitBtn.classList.add("hidden");
+    }
+}
+
 export function handlePlayPerfectPronunciation() {
     try {
         const currentPhoneme = state.getPhonemes()[state.getCurrentPhonemeIndex()];
@@ -137,11 +186,20 @@ export function handlePlayPerfectPronunciation() {
             audioUrl = `${AUDIO_URL}?file_name=${encodeURIComponent(currentPhoneme)}.mp3`;
         }
         const audio = new Audio(audioUrl);
+
+        audio.onplay = () => {
+            dom.toggleActionButtons(true);
+        };
+
         audio.onerror = () => {
             console.error(`Error loading audio file for phoneme: ${currentPhoneme}`);
             dom.setStatus(`Nie można odtwarzać nagrania dla głoski: ${currentPhoneme}`, "error");
+            dom.toggleActionButtons(false);
         };
-        audio.onended = () => dom.setStatus("");
+        audio.onended = () => {
+            dom.setStatus("");
+            dom.toggleActionButtons(false);
+        };
         audio.play();
     } catch (error) {
         console.error("Error playing phoneme recording:", error);
@@ -200,32 +258,7 @@ export function handleNext() {
     let currentIndex = state.getCurrentPhonemeIndex();
     if (currentIndex < state.getPhonemes().length - 1) {
         currentIndex++;
-        state.setCurrentPhonemeIndex(currentIndex);
-    }
-
-    state.setAudioBlob(null);
-    state.setAudioChunks([]);
-
-    dom.updatePhonemeDisplay();
-    dom.updateProgress();
-    dom.scrollCurrentPhonemeIntoView();
-
-    const recordings = state.getRecordings();
-    const currentPhoneme = state.getPhonemes()[currentIndex];
-    const existingRecording = recordings[currentPhoneme];
-    if (existingRecording) {
-        state.setAudioBlob(existingRecording);
-    }
-
-    dom.updateNavigationButtons();
-    dom.DOMElements.playbackBtn.disabled = !state.getAudioBlob();
-
-    const isLastPhoneme = currentIndex === state.getPhonemes().length - 1;
-    if (isLastPhoneme && state.getAudioBlob()) {
-        dom.DOMElements.submitBtn.disabled = false;
-        dom.DOMElements.submitBtn.classList.remove("hidden");
-    } else {
-        dom.DOMElements.submitBtn.classList.add("hidden");
+        navigateToPhoneme(currentIndex);
     }
 }
 
@@ -237,26 +270,8 @@ export function handlePrev() {
     let currentIndex = state.getCurrentPhonemeIndex();
     if (currentIndex > 0) {
         currentIndex--;
-        state.setCurrentPhonemeIndex(currentIndex);
+        navigateToPhoneme(currentIndex);
     }
-
-    state.setAudioBlob(null);
-    state.setAudioChunks([]);
-
-    dom.updatePhonemeDisplay();
-    dom.updateProgress();
-    dom.scrollCurrentPhonemeIntoView();
-
-    const recordings = state.getRecordings();
-    const currentPhoneme = state.getPhonemes()[currentIndex];
-    const existingRecording = recordings[currentPhoneme];
-    if (existingRecording) {
-        state.setAudioBlob(existingRecording);
-    }
-
-    dom.updateNavigationButtons();
-    dom.DOMElements.playbackBtn.disabled = !state.getAudioBlob();
-    dom.DOMElements.submitBtn.classList.add("hidden");
 }
 
 export function handleSubmit(restartHandler) {
