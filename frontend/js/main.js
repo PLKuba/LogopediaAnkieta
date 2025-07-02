@@ -49,6 +49,7 @@ const preloadData = async () => {
 };
 
 const restartApp = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     removeThankYouScreen();
     state.resetStateForRestart();
     hideUploadProgress();
