@@ -5,12 +5,33 @@ import { AUDIO_URL } from './constants.js';
 
 export async function requestMicrophonePermission() {
     try {
+        // Check for Permissions API support
+        if (navigator.permissions && navigator.permissions.query) {
+            const permissionStatus = await navigator.permissions.query({ name: 'microphone' });
+
+            if (permissionStatus.state === 'denied') {
+                import('./dom.js').then(dom => dom.setMicrophoneAccessUI(false));
+                console.error("Microphone access was previously denied.");
+                return; // Stop execution if permission is denied
+            }
+
+            // Re-check status on change
+            permissionStatus.onchange = () => {
+                if (permissionStatus.state !== 'granted') {
+                    import('./dom.js').then(dom => dom.setMicrophoneAccessUI(false));
+                    state.setMicrophoneStream(null); // Clear stream if permissions are revoked
+                }
+            };
+        }
+
+        // Proceed to request microphone access. If already granted, this will not prompt the user.
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         state.setMicrophoneStream(stream);
         import('./dom.js').then(dom => dom.setMicrophoneAccessUI(true));
+
     } catch (error) {
+        // This will catch errors from getUserMedia, including user denial from a prompt.
         import('./dom.js').then(dom => dom.setMicrophoneAccessUI(false));
-        // No need to setStatus here, handled by overlay
         console.error("Microphone access error:", error);
     }
 }
