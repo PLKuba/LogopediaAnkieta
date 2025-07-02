@@ -238,20 +238,26 @@ export function handlePlayback() {
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
 
-        audio.onplay = () => {
-            dom.updateNavigationButtons(true); // Disable nav buttons
-            dom.toggleActionButtons(true); // Disable action buttons
-        };
-
-        audio.onended = () => {
+        // Function to clean up the object URL
+        const cleanup = () => {
+            URL.revokeObjectURL(audioUrl);
             dom.updateNavigationButtons(false); // Enable nav buttons
             dom.toggleActionButtons(false); // Enable action buttons
             dom.setStatus("");
         };
 
+        audio.onplay = () => {
+            dom.updateNavigationButtons(true); // Disable nav buttons
+            dom.toggleActionButtons(true); // Disable action buttons
+        };
+
+        audio.onended = cleanup;
+
         audio.onerror = () => {
             console.error("Error loading audio blob for playback.");
             dom.setStatus("Nie można odtworzyć nagrania.", "error");
+            // No need to call cleanup here as onended will also be called, but good practice for robustness
+            URL.revokeObjectURL(audioUrl); // Explicitly revoke on error
             dom.updateNavigationButtons(false); // Re-enable buttons on error
             dom.toggleActionButtons(false);
         };
