@@ -1,6 +1,7 @@
 import * as state from './state.js';
 import * as dom from './dom.js';
 import { BACKEND_URL } from './constants.js';
+import { sentryUtils } from './sentry.js';
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
 
@@ -10,13 +11,22 @@ export async function fetchPhonemes() {
         if (!response.ok) {
             const errorText = await response.text();
             console.error("Error fetching phonemes:", errorText);
-            throw new Error(`Failed to fetch phonemes: ${response.statusText}`);
+            sentryUtils.captureException(new Error(`Failed to fetch phonemes: ${response.status} ${errorText}`), {
+                context: 'fetchPhonemes',
+                responseStatus: response.status,
+                responseText: errorText
+            });
+            throw new Error(`Failed to fetch phonemes: ${response.status}`);
         }
         const phonemes = await response.json();
         state.setPhonemes(phonemes);
         return phonemes;
     } catch (error) {
         console.error("Error fetching phonemes:", error);
+        sentryUtils.captureException(error, { 
+            context: 'fetchPhonemes',
+            step: 'network_request'
+        });
         dom.setStatus("Nie udało się załadować głosek. Spróbuj odświeżyć stronę.", "error");
         return null;
     }
@@ -70,6 +80,11 @@ export async function submitAllRecordings(restartHandler) {
 
             } catch (error) {
                 console.error(`Error uploading ${phoneme}:`, error);
+                sentryUtils.captureException(error, { 
+                    context: 'uploadRecording',
+                    phoneme: phoneme,
+                    attempt: 'single_upload'
+                });
                 failedCount++;
             }
         }

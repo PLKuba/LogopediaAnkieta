@@ -26,6 +26,7 @@ import {
 } from './handlers.js';
 import { fetchPhonemes } from './api.js';
 import * as state from './state.js';
+import { sentryUtils } from './sentry.js';
 
 const recordBtn = document.getElementById('record-btn');
 const playbackBtn = document.getElementById('playback-btn');
@@ -46,6 +47,10 @@ const preloadData = async () => {
         return phonemes;
     } catch (error) {
         console.error('Preloading data failed:', error);
+        sentryUtils.captureException(error, { 
+            context: 'preloadData',
+            phonemesLength: phonemes ? phonemes.length : 0 
+        });
         throw error;
     }
 };
@@ -102,6 +107,10 @@ const startApp = async () => {
 
     } catch (error) {
         console.error('Starting app failed:', error);
+        sentryUtils.captureException(error, { 
+            context: 'startApp',
+            step: 'app_initialization'
+        });
         toggleStartButtonLoading(false);
         const statusEl = document.getElementById('status');
         if (statusEl) {
@@ -144,6 +153,10 @@ document.addEventListener('visibilitychange', () => {
             }
         } catch (error) {
             console.log('Error stopping recording on visibility change:', error);
+            sentryUtils.captureException(error, { 
+                context: 'visibilitychange',
+                isRecording: state.getIsRecording()
+            });
         }
     }
 });

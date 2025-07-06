@@ -2,6 +2,7 @@ import * as state from './state.js';
 import * as dom from './dom.js';
 import * as api from './api.js';
 import { AUDIO_URL } from './constants.js';
+import { sentryUtils } from './sentry.js';
 
 // Enhanced audio recording class based on working demo
 class AudioRecorder {
@@ -222,6 +223,12 @@ class AudioRecorder {
             
         } catch (error) {
             console.error('Error starting recording:', error);
+            sentryUtils.captureException(error, { 
+                context: 'startRecording',
+                errorName: error.name,
+                hasPermission: this.hasPermission,
+                streamExists: !!this.stream
+            });
             
             // Remove loading animation on error
             dom.DOMElements.recordBtn.classList.remove('loading');
@@ -551,6 +558,10 @@ export function handlePlayPerfectPronunciation() {
         audio.play();
     } catch (error) {
         console.error("Error playing phoneme recording:", error);
+        sentryUtils.captureException(error, { 
+            context: 'handlePlayPerfectPronunciation',
+            currentPhoneme: state.getPhonemes()[state.getCurrentPhonemeIndex()]
+        });
         dom.setStatus("Wystąpił błąd podczas odtwarzania nagrania.", "error");
     }
 }

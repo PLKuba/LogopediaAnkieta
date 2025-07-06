@@ -30,6 +30,14 @@
   <link rel="stylesheet" href="css/thankyou.css" />
   <link rel="stylesheet" href="css/responsive.css" />
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600&display=swap" rel="stylesheet">
+  
+  <!-- Sentry SDK -->
+  <script
+    src="https://browser.sentry-cdn.com/8.40.0/bundle.tracing.min.js"
+    integrity="sha384-dVnO6Q7gkWl7/jR7TKKnP0qKR2qQYsKo8SWP2kOcCIGUlKrn6r8nJgJrjMJ5c9nY"
+    crossorigin="anonymous"
+  ></script>
+  <script src="config.js"></script>
 </head>
 <body>
   <div class="container">
@@ -114,6 +122,8 @@
     </footer>
   </div>
 
+  <!-- Initialize Sentry before other scripts -->
+  <script type="module" src="js/sentry.js"></script>
   <script type="module" src="js/main.js"></script>
 </body>
 </html>
