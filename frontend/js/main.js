@@ -21,6 +21,8 @@ import {
     handlePrev,
     handleSubmit,
     preloadPerfectPronunciationAudio,
+    initializeAudioRecorder,
+    cleanupAudioRecorder
 } from './handlers.js';
 import { fetchPhonemes } from './api.js';
 import * as state from './state.js';
@@ -54,6 +56,9 @@ const restartApp = () => {
     state.resetStateForRestart();
     hideUploadProgress();
 
+    // Clean up audio recorder resources
+    cleanupAudioRecorder();
+
     // Restore the main UI
     removeFadeOutEffect();
     showGameUI(true);
@@ -67,6 +72,9 @@ const restartApp = () => {
 const startApp = async () => {
     try {
         toggleStartButtonLoading(true);
+
+        // Initialize audio recorder
+        initializeAudioRecorder();
 
         const micGranted = await requestMicrophoneAccessAndUI();
         if (!micGranted) {
@@ -120,5 +128,22 @@ playBtn.addEventListener('click', handlePlayPerfectPronunciation);
 nextBtn.addEventListener('click', handleNext);
 prevBtn.addEventListener('click', handlePrev);
 submitBtn.addEventListener('click', () => handleSubmit(restartApp));
+
+// Clean up resources when page is unloaded
+window.addEventListener('beforeunload', () => {
+    cleanupAudioRecorder();
+});
+
+// Handle page visibility change to stop recording if user switches tabs
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        // Stop any ongoing recording when user switches tabs
+        try {
+            handleRecord(); // This will stop recording if currently recording
+        } catch (error) {
+            console.log('Error stopping recording on visibility change:', error);
+        }
+    }
+});
 
 document.addEventListener('DOMContentLoaded', initializeApp);
