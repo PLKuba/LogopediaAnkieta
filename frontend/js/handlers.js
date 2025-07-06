@@ -349,7 +349,7 @@ class AudioRecorder {
             audio.addEventListener('play', () => {
                 console.log('Audio event: play - playback started successfully');
                 dom.updateNavigationButtons(true); // Disable nav buttons
-                dom.toggleActionButtons(true); // Disable action buttons
+                dom.setPlaybackButtonStates(false, true); // Playing user recording
             });
             
             audio.addEventListener('playing', () => {
@@ -359,7 +359,7 @@ class AudioRecorder {
             audio.addEventListener('ended', () => {
                 console.log('Audio event: ended - playback finished');
                 dom.updateNavigationButtons(false); // Enable nav buttons
-                dom.toggleActionButtons(false); // Enable action buttons
+                dom.setPlaybackButtonStates(false, false); // Reset button states
                 dom.setStatus("");
             });
             
@@ -386,7 +386,7 @@ class AudioRecorder {
                 
                 dom.setStatus('Błąd odtwarzania audio. Spróbuj nagrać ponownie.', 'error');
                 dom.updateNavigationButtons(false);
-                dom.toggleActionButtons(false);
+                dom.setPlaybackButtonStates(false, false); // Reset button states
             });
             
             console.log('About to call audio.play()...');
@@ -408,7 +408,7 @@ class AudioRecorder {
                 
                 dom.setStatus('Nie można odtworzyć audio. Spróbuj nagrać ponownie.', 'error');
                 dom.updateNavigationButtons(false);
-                dom.toggleActionButtons(false);
+                dom.setPlaybackButtonStates(false, false); // Reset button states
             });
         } else {
             console.log('No audio URL available for playback');
@@ -533,17 +533,20 @@ export function handlePlayPerfectPronunciation() {
         const audio = new Audio(audioUrl);
 
         audio.onplay = () => {
-            dom.toggleActionButtons(true);
+            dom.setPlaybackButtonStates(true, false); // Playing perfect pronunciation
+            dom.updateNavigationButtons(true); // Disable nav buttons
         };
 
         audio.onerror = () => {
             console.error(`Error loading audio file for phoneme: ${currentPhoneme}`);
             dom.setStatus(`Nie można odtwarzać nagrania dla głoski: ${currentPhoneme}`, "error");
-            dom.toggleActionButtons(false);
+            dom.setPlaybackButtonStates(false, false); // Reset button states
+            dom.updateNavigationButtons(false); // Enable nav buttons
         };
         audio.onended = () => {
             dom.setStatus("");
-            dom.toggleActionButtons(false);
+            dom.setPlaybackButtonStates(false, false); // Reset button states
+            dom.updateNavigationButtons(false); // Enable nav buttons
         };
         audio.play();
     } catch (error) {

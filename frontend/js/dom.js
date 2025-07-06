@@ -92,7 +92,14 @@ export function updateNavigationButtons(isPlaying) {
         if (prevBtn) prevBtn.disabled = true;
         if (submitBtn) submitBtn.classList.add('hidden');
         if (playbackBtn) playbackBtn.disabled = true;
+        // Also reset playback button states when recording
+        setPlaybackButtonStates(false, false);
         return;
+    }
+
+    // Reset playback button states when not playing and not recording
+    if (isPlaying === false || isPlaying === undefined) {
+        setPlaybackButtonStates(false, false);
     }
 
     if (nextBtn) nextBtn.disabled = !state.getAudioBlob();
@@ -151,6 +158,40 @@ export function toggleActionButtons(disabled) {
     const { recordBtn, playBtn } = DOMElements;
     if (recordBtn) recordBtn.disabled = disabled;
     if (playBtn) playBtn.disabled = disabled;
+}
+
+export function setPlaybackButtonStates(playingPerfect, playingUserRecording) {
+    const { playBtn, playbackBtn } = DOMElements;
+    
+    if (playingPerfect) {
+        // Perfect pronunciation is playing
+        if (playBtn) {
+            playBtn.classList.add('active');
+            playBtn.disabled = false; // Keep it enabled so user can see it's active
+        }
+        if (playbackBtn) {
+            playbackBtn.disabled = true; // Disable user recording playback
+        }
+    } else if (playingUserRecording) {
+        // User recording is playing
+        if (playbackBtn) {
+            playbackBtn.classList.add('active');
+            playbackBtn.disabled = false; // Keep it enabled so user can see it's active
+        }
+        if (playBtn) {
+            playBtn.disabled = true; // Disable perfect pronunciation
+        }
+    } else {
+        // Nothing is playing - reset both buttons
+        if (playBtn) {
+            playBtn.classList.remove('active');
+            playBtn.disabled = false;
+        }
+        if (playbackBtn) {
+            playbackBtn.classList.remove('active');
+            playbackBtn.disabled = !state.getAudioBlob(); // Enable only if there's a recording
+        }
+    }
 }
 
 export function showUploadProgress() {

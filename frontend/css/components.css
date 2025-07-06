@@ -116,6 +116,11 @@
   box-shadow: none;
   background-color: #999 !important;
 }
+.btn.active {
+  opacity: 0.8;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.12);
+}
 .btn-primary {
   background-color: var(--secondary-color);
   color: var(--text-color);
