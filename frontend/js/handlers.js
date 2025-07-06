@@ -84,7 +84,10 @@ class AudioRecorder {
         console.log('=== START RECORDING ATTEMPT ===');
         console.log('Current recording state:', this.isRecording);
         console.log('Existing stream active:', this.stream?.active);
-        
+
+        // Add loading animation immediately
+        dom.DOMElements.recordBtn.classList.add('loading');
+
         try {
             // For iOS Safari, always get a fresh stream for each recording
             const isIOSSafari = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
@@ -118,7 +121,14 @@ class AudioRecorder {
                 })));
             } else {
                 console.log('Reusing existing microphone stream');
+                // Add a small delay to show the loading animation even when reusing stream
+                await new Promise(resolve => setTimeout(resolve, 250));
             }
+            
+            // Remove loading animation after stream is ready (always, regardless of fresh or reused)
+            setTimeout(() => {
+                dom.DOMElements.recordBtn.classList.remove('loading');
+            }, 100); // Small delay to ensure smooth transition
             
             // Determine the best MIME type for the browser
             const mimeTypes = [
@@ -212,6 +222,10 @@ class AudioRecorder {
             
         } catch (error) {
             console.error('Error starting recording:', error);
+            
+            // Remove loading animation on error
+            dom.DOMElements.recordBtn.classList.remove('loading');
+            
             let errorMessage = 'Nie udało się uzyskać dostępu do mikrofonu. ';
             
             if (error.name === 'NotAllowedError') {
@@ -265,7 +279,7 @@ class AudioRecorder {
             dom.DOMElements.submitBtn.disabled = false;
         }
 
-        dom.DOMElements.recordBtn.classList.remove("recording");
+        dom.DOMElements.recordBtn.classList.remove("recording", "loading");
 
         if (state.getAutoStopTimeout()) {
             clearTimeout(state.getAutoStopTimeout());
@@ -275,6 +289,7 @@ class AudioRecorder {
     
     updateUI() {
         if (this.isRecording) {
+            dom.DOMElements.recordBtn.classList.remove('loading'); // Ensure loading is removed
             dom.DOMElements.recordBtn.classList.add("recording");
             dom.DOMElements.playbackBtn.disabled = true;
             dom.DOMElements.nextBtn.disabled = true;
@@ -292,7 +307,7 @@ class AudioRecorder {
             }, 5000);
             state.setAutoStopTimeout(timeout);
         } else {
-            dom.DOMElements.recordBtn.classList.remove("recording");
+            dom.DOMElements.recordBtn.classList.remove("recording", "loading"); // Remove both classes
             dom.updateNavigationButtons();
         }
     }

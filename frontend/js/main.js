@@ -137,9 +137,11 @@ window.addEventListener('beforeunload', () => {
 // Handle page visibility change to stop recording if user switches tabs
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
-        // Stop any ongoing recording when user switches tabs
+        // Only stop recording if there's actually a recording in progress
         try {
-            handleRecord(); // This will stop recording if currently recording
+            if (state.getIsRecording()) {
+                handleRecord(); // This will stop recording if currently recording
+            }
         } catch (error) {
             console.log('Error stopping recording on visibility change:', error);
         }
