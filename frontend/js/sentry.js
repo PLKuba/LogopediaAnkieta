@@ -85,6 +85,79 @@ export const sentryUtils = {
         }
         console.log('Message captured:', message, context);
     },
+
+    // Enhanced logging methods for different levels
+    logInfo: (message, context = {}) => {
+        if (typeof Sentry !== 'undefined') {
+            Sentry.withScope((scope) => {
+                Object.keys(context).forEach(key => {
+                    scope.setTag(key, context[key]);
+                });
+                scope.setLevel('info');
+                Sentry.captureMessage(message, 'info');
+            });
+        }
+        console.info('INFO:', message, context);
+    },
+
+    logWarning: (message, context = {}) => {
+        if (typeof Sentry !== 'undefined') {
+            Sentry.withScope((scope) => {
+                Object.keys(context).forEach(key => {
+                    scope.setTag(key, context[key]);
+                });
+                scope.setLevel('warning');
+                Sentry.captureMessage(message, 'warning');
+            });
+        }
+        console.warn('WARNING:', message, context);
+    },
+
+    logError: (message, context = {}, error = null) => {
+        if (typeof Sentry !== 'undefined') {
+            Sentry.withScope((scope) => {
+                Object.keys(context).forEach(key => {
+                    scope.setTag(key, context[key]);
+                });
+                scope.setLevel('error');
+                if (error) {
+                    Sentry.captureException(error);
+                } else {
+                    Sentry.captureMessage(message, 'error');
+                }
+            });
+        }
+        console.error('ERROR:', message, context, error);
+    },
+
+    // Log user actions for debugging
+    logUserAction: (action, context = {}) => {
+        if (typeof Sentry !== 'undefined') {
+            Sentry.addBreadcrumb({
+                message: `User action: ${action}`,
+                category: 'user',
+                level: 'info',
+                data: context,
+                timestamp: Date.now() / 1000,
+            });
+        }
+        console.log('USER ACTION:', action, context);
+    },
+
+    // Log performance metrics
+    logPerformance: (metric, value, context = {}) => {
+        if (typeof Sentry !== 'undefined') {
+            Sentry.withScope((scope) => {
+                Object.keys(context).forEach(key => {
+                    scope.setTag(key, context[key]);
+                });
+                scope.setTag('metric', metric);
+                scope.setTag('value', value);
+                Sentry.captureMessage(`Performance: ${metric} = ${value}`, 'info');
+            });
+        }
+        console.log('PERFORMANCE:', metric, value, context);
+    },
     
     // Add breadcrumb for debugging
     addBreadcrumb: (message, category = 'custom', level = 'info', data = {}) => {

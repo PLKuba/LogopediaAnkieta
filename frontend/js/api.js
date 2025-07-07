@@ -7,6 +7,8 @@ const delay = ms => new Promise(res => setTimeout(res, ms));
 
 export async function fetchPhonemes() {
     try {
+        sentryUtils.logInfo('Fetching phonemes from API', { url: `${BACKEND_URL}/phonemes` });
+        
         const response = await fetch(`${BACKEND_URL}/phonemes`);
         if (!response.ok) {
             const errorText = await response.text();
@@ -19,6 +21,12 @@ export async function fetchPhonemes() {
             throw new Error(`Failed to fetch phonemes: ${response.status}`);
         }
         const phonemes = await response.json();
+        
+        sentryUtils.logInfo('Phonemes fetched successfully', { 
+            phonemesCount: phonemes.length,
+            phonemes: phonemes.join(', ')
+        });
+        
         state.setPhonemes(phonemes);
         return phonemes;
     } catch (error) {
@@ -34,8 +42,17 @@ export async function fetchPhonemes() {
 
 export async function submitAllRecordings(restartHandler) {
     if (state.getIsUploading() || state.getHasSubmitted()) {
+        sentryUtils.logWarning('Submission already in progress or completed', {
+            isUploading: state.getIsUploading(),
+            hasSubmitted: state.getHasSubmitted()
+        });
         return;
     }
+
+    sentryUtils.logInfo('Starting recording submission', { 
+        recordingsCount: Object.keys(state.getRecordings()).length 
+    });
+    sentryUtils.logUserAction('submit_recordings_started');
 
     state.setIsUploading(true);
     dom.showUploadProgress(); // Ensure progress bar is shown
@@ -90,6 +107,14 @@ export async function submitAllRecordings(restartHandler) {
         }
 
         if (failedCount === 0) {
+            sentryUtils.logInfo('All recordings uploaded successfully', { 
+                totalRecordings: Object.keys(recordings).length,
+                failedCount: 0
+            });
+            sentryUtils.logUserAction('submit_recordings_success', { 
+                totalRecordings: Object.keys(recordings).length 
+            });
+            
             state.setHasSubmitted(true);
             state.setIsUploading(false);
             dom.updateUploadProgress(100);
@@ -111,6 +136,16 @@ export async function submitAllRecordings(restartHandler) {
             dom.createThankYouScreen(restartHandler, submitEmail);
 
         } else {
+            sentryUtils.logError('Some recordings failed to upload', { 
+                totalRecordings: Object.keys(recordings).length,
+                failedCount: failedCount,
+                uploadedCount: uploadedCount
+            });
+            sentryUtils.logUserAction('submit_recordings_partial_failure', { 
+                totalRecordings: Object.keys(recordings).length,
+                failedCount: failedCount
+            });
+            
             dom.setStatus(`Wysłano ${uploadedCount} z ${totalRecordings} nagrań. ${failedCount} nie udało się wysłać.`, "error");
             state.setIsUploading(false);
             // Re-enable submit button on error
@@ -122,6 +157,10 @@ export async function submitAllRecordings(restartHandler) {
 
     } catch (error) {
         console.error("Error during batch upload:", error);
+        sentryUtils.captureException(error, { 
+            context: 'submitAllRecordings',
+            totalRecordings: Object.keys(state.getRecordings()).length
+        });
         dom.setStatus("Wystąpił błąd podczas wysyłania nagrań.", "error");
         state.setIsUploading(false);
         // Re-enable submit button on error

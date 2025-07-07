@@ -85,8 +85,14 @@ class AudioRecorder {
         console.log('=== START RECORDING ATTEMPT ===');
         console.log('Current recording state:', this.isRecording);
         console.log('Existing stream active:', this.stream?.active);
-
-        throw new Error('AudioRecorder.startRecording is not implemented yet');
+        
+        sentryUtils.logInfo('Starting audio recording', { 
+            hasPermission: this.hasPermission,
+            hasExistingStream: !!this.stream,
+            isRecording: this.isRecording,
+            streamActive: this.stream?.active
+        });
+        sentryUtils.logUserAction('start_recording');
 
         // Add loading animation immediately
         dom.DOMElements.recordBtn.classList.add('loading');
@@ -97,6 +103,7 @@ class AudioRecorder {
             
             if (!this.stream || !this.stream.active || isIOSSafari) {
                 console.log('Getting fresh microphone access...');
+                sentryUtils.logInfo('Requesting fresh microphone access', { isIOSSafari });
                 
                 // Clean up any existing stream first
                 if (this.stream) {
@@ -254,6 +261,12 @@ class AudioRecorder {
         console.log('=== STOP RECORDING ===');
         console.log('MediaRecorder state before stop:', this.mediaRecorder?.state);
         
+        sentryUtils.logInfo('Stopping audio recording', { 
+            mediaRecorderState: this.mediaRecorder?.state,
+            isRecording: this.isRecording
+        });
+        sentryUtils.logUserAction('stop_recording');
+        
         if (this.mediaRecorder && this.isRecording) {
             this.mediaRecorder.stop();
             this.isRecording = false;
@@ -265,6 +278,7 @@ class AudioRecorder {
             const isIOSSafari = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
             if (isIOSSafari && this.stream) {
                 console.log('iOS Safari detected - stopping stream tracks for fresh stream next time');
+                sentryUtils.logInfo('iOS Safari - stopping stream tracks for fresh stream');
                 this.stream.getTracks().forEach(track => track.stop());
                 this.stream = null;
             }
@@ -473,19 +487,52 @@ const perfectPronunciationAudioCache = new Map();
 
 export async function preloadPerfectPronunciationAudio(phonemes) {
     if (!Array.isArray(phonemes)) return;
+    
+    sentryUtils.logInfo('Starting perfect pronunciation audio preload', { 
+        phonemesCount: phonemes.length 
+    });
+    
+    const startTime = Date.now();
+    let successCount = 0;
+    let failureCount = 0;
+    
     for (const phoneme of phonemes) {
         const url = `${AUDIO_URL}?file_name=${encodeURIComponent(phoneme)}.mp3`;
         try {
             const response = await fetch(url);
-            if (!response.ok) continue;
+            if (!response.ok) {
+                failureCount++;
+                continue;
+            }
             const blob = await response.blob();
             const blobUrl = URL.createObjectURL(blob);
             perfectPronunciationAudioCache.set(phoneme, blobUrl);
+            successCount++;
         } catch (e) {
             // Optionally log the error, but don't throw
             console.warn(`Failed to preload audio for phoneme '${phoneme}':`, e);
+            sentryUtils.logWarning('Failed to preload perfect pronunciation audio', { 
+                phoneme: phoneme,
+                error: e.message
+            });
+            failureCount++;
         }
     }
+    
+    const loadTime = Date.now() - startTime;
+    sentryUtils.logPerformance('perfect_pronunciation_preload', loadTime, { 
+        phonemesCount: phonemes.length,
+        successCount: successCount,
+        failureCount: failureCount,
+        loadTimeMs: loadTime
+    });
+    
+    sentryUtils.logInfo('Perfect pronunciation audio preload completed', { 
+        phonemesCount: phonemes.length,
+        successCount: successCount,
+        failureCount: failureCount,
+        loadTimeMs: loadTime
+    });
 }
 
 function navigateToPhoneme(newIndex) {
@@ -534,25 +581,41 @@ function navigateToPhoneme(newIndex) {
 export function handlePlayPerfectPronunciation() {
     try {
         const currentPhoneme = state.getPhonemes()[state.getCurrentPhonemeIndex()];
+        
+        sentryUtils.logInfo('Playing perfect pronunciation', { 
+            phoneme: currentPhoneme,
+            phonemeIndex: state.getCurrentPhonemeIndex()
+        });
+        sentryUtils.logUserAction('play_perfect_pronunciation', { phoneme: currentPhoneme });
+        
         let audioUrl = perfectPronunciationAudioCache.get(currentPhoneme);
         if (!audioUrl) {
+            sentryUtils.logWarning('Perfect pronunciation audio not preloaded, using fallback', { 
+                phoneme: currentPhoneme 
+            });
             // Fallback if not preloaded
             audioUrl = `${AUDIO_URL}?file_name=${encodeURIComponent(currentPhoneme)}.mp3`;
         }
         const audio = new Audio(audioUrl);
 
         audio.onplay = () => {
+            sentryUtils.logInfo('Perfect pronunciation audio started playing', { phoneme: currentPhoneme });
             dom.setPlaybackButtonStates(true, false); // Playing perfect pronunciation
             dom.updateNavigationButtons(true); // Disable nav buttons
         };
 
         audio.onerror = () => {
             console.error(`Error loading audio file for phoneme: ${currentPhoneme}`);
+            sentryUtils.logError('Perfect pronunciation audio failed to load', { 
+                phoneme: currentPhoneme,
+                audioUrl: audioUrl
+            });
             dom.setStatus(`Nie można odtwarzać nagrania dla głoski: ${currentPhoneme}`, "error");
             dom.setPlaybackButtonStates(false, false); // Reset button states
             dom.updateNavigationButtons(false); // Enable nav buttons
         };
         audio.onended = () => {
+            sentryUtils.logInfo('Perfect pronunciation audio ended', { phoneme: currentPhoneme });
             dom.setStatus("");
             dom.setPlaybackButtonStates(false, false); // Reset button states
             dom.updateNavigationButtons(false); // Enable nav buttons
@@ -569,33 +632,60 @@ export function handlePlayPerfectPronunciation() {
 }
 
 export function handlePlayback() {
+    sentryUtils.logInfo('Playing user recording');
+    sentryUtils.logUserAction('play_user_recording');
+    
     if (!audioRecorder) {
+        sentryUtils.logError('No audio recorder available for playback');
         dom.setStatus("Brak nagrania do odtworzenia.", "error");
         return;
     }
     
     if (!audioRecorder.audioBlob) {
+        sentryUtils.logWarning('No audio blob available for playback');
         dom.setStatus("Brak nagrania do odtworzenia.", "error");
         return;
     }
+    
+    sentryUtils.logInfo('Starting user recording playback', { 
+        audioBlobSize: audioRecorder.audioBlob.size,
+        audioBlobType: audioRecorder.audioBlob.type
+    });
     
     audioRecorder.playRecording();
 }
 
 export function handleNext() {
     if (state.getIsRecording()) {
+        sentryUtils.logWarning('Attempted to navigate next while recording');
         return;
     }
+
+    let currentIndex = state.getCurrentPhonemeIndex();
+    const currentPhoneme = state.getPhonemes()[currentIndex];
+    
+    sentryUtils.logInfo('Navigating to next phoneme', { 
+        fromIndex: currentIndex,
+        fromPhoneme: currentPhoneme,
+        toIndex: currentIndex + 1
+    });
+    sentryUtils.logUserAction('navigate_next', { 
+        fromPhoneme: currentPhoneme,
+        phonemeIndex: currentIndex 
+    });
 
     const audioBlob = state.getAudioBlob();
     if (audioBlob) {
         const recordings = state.getRecordings();
-        const currentPhoneme = state.getPhonemes()[state.getCurrentPhonemeIndex()];
         recordings[currentPhoneme] = audioBlob;
         state.setRecordings(recordings);
+        
+        sentryUtils.logInfo('Recording saved for current phoneme', { 
+            phoneme: currentPhoneme,
+            recordingSize: audioBlob.size
+        });
     }
 
-    let currentIndex = state.getCurrentPhonemeIndex();
     if (currentIndex < state.getPhonemes().length - 1) {
         currentIndex++;
         navigateToPhoneme(currentIndex);
@@ -604,10 +694,23 @@ export function handleNext() {
 
 export function handlePrev() {
     if (state.getIsRecording()) {
+        sentryUtils.logWarning('Attempted to navigate prev while recording');
         return;
     }
 
     let currentIndex = state.getCurrentPhonemeIndex();
+    const currentPhoneme = state.getPhonemes()[currentIndex];
+    
+    sentryUtils.logInfo('Navigating to previous phoneme', { 
+        fromIndex: currentIndex,
+        fromPhoneme: currentPhoneme,
+        toIndex: currentIndex - 1
+    });
+    sentryUtils.logUserAction('navigate_prev', { 
+        fromPhoneme: currentPhoneme,
+        phonemeIndex: currentIndex 
+    });
+
     if (currentIndex > 0) {
         currentIndex--;
         navigateToPhoneme(currentIndex);
