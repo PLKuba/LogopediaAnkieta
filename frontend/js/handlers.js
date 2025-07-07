@@ -86,6 +86,8 @@ class AudioRecorder {
         console.log('Current recording state:', this.isRecording);
         console.log('Existing stream active:', this.stream?.active);
 
+        throw new Error('AudioRecorder.startRecording is not implemented yet');
+
         // Add loading animation immediately
         dom.DOMElements.recordBtn.classList.add('loading');
 

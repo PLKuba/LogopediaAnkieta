@@ -37,7 +37,7 @@ if (typeof Sentry !== 'undefined') {
         integrations: [
             new Sentry.BrowserTracing({
                 // Set up automatic route change tracking if you add routing later
-                tracePropagationTargets: ["localhost", /^https:\/\/yourapi\.domain\.com\/api/],
+                tracePropagationTargets: ["localhost", /^https:\/\/api\.ankietalogopedyczna\.pl/],
             }),
         ],
     });
