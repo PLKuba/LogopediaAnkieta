@@ -43,12 +43,12 @@
     box-shadow: none;
   }
   .phoneme-progress {
-    padding: 1rem;
+    padding: 1.2rem;
   }
   .phoneme-bubble {
     width: 45px;
     height: 45px;
-    font-size: 1.1rem;
+    font-size: 1.1.2rem;
     margin: 0 0.4rem;
   }
   .btn {
@@ -75,8 +75,8 @@
     height: 90px;
   }
   .btn-play, .btn-playback {
-    width: 150px;
-    height: 80px;
+    width: 190px;
+    height: 100px;
   }
   .btn-nav {
     width: 80px;
@@ -86,7 +86,7 @@
     font-size: 2rem;
   }
   .btn-text {
-    font-size: 0.8rem;
+    font-size: 1.2rem;
   }
   .progress-counter {
     font-size: 0.8rem;
@@ -111,14 +111,14 @@
     bottom: 45px;
   }
   #phoneme-display {
-    margin: 0 0 1rem;
+    margin: 0 0 1.2rem;
     min-height: 90px;
   }
   .playback-row {
     margin-bottom: 3rem;
   }
   .submit-row {
-    margin-top: 0.1rem;
+    margin-top: 0.1.2rem;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -155,7 +155,7 @@
     font-style: italic;
   }
   .control-row.submit-row {
-    margin-top: 0.1rem;
+    margin-top: 0.1.2rem;
     min-height: 90px;
     display: flex;
     justify-content: center;
@@ -165,13 +165,13 @@
   .btn-start, .btn-restart {
     width: 80%;
     max-width: 320px;
-    padding: 1.2rem 1rem;
-    font-size: 1.1rem;
+    padding: 1.2rem 1.2rem;
+    font-size: 1.1.2rem;
     font-weight: 600;
   }
 
   .btn-restart {
-    margin-top: 1rem;
+    margin-top: 1.2rem;
   }
 }
 @media (max-width: 375px) and (max-height: 812px) {
@@ -190,7 +190,8 @@
     height: 22px;
   }
   .btn-play, .btn-playback {
-    width: 130px;
+    width: 170px;
+    height: 90px;
   }
   .btn-submit {
     margin-bottom: 1.5rem;
@@ -210,10 +211,10 @@
     min-height: 90px;
   }
   .control-row {
-    gap: 1rem;
+    gap: 1.2rem;
   }
   .control-row.submit-row {
-    margin-top: 0.1rem;
+    margin-top: 0.1.2rem;
     min-height: 80px;
     display: flex;
     justify-content: center;
@@ -255,7 +256,8 @@
     height: 22px;
   }
   .btn-play, .btn-playback {
-    width: 130px;
+    width: 170px;
+    height: 90px;
   }
   .btn-submit {
     margin-bottom: 2rem;
@@ -275,7 +277,7 @@
     padding: 0.25rem;
   }
   .game-container {
-    padding: 1rem 1rem 70px 1rem;
+    padding: 1.2rem 1.2rem 70px 1.2rem;
   }
   .btn-nav {
     width: 80px;
@@ -306,7 +308,7 @@
   .phoneme-bubble {
     width: 40px;
     height: 40px;
-    font-size: 1rem;
+    font-size: 1.2rem;
     margin: 0 0.3rem;
   }
   .progress-counter {

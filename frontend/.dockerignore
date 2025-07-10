@@ -3,3 +3,5 @@ node_modules/
 *.pem
 sentry.bundle.min.js
 sentry.bundle.tracing.min.js
+sentry.bundle.min.js.map
+sentry.bundle.tracing.min.js.map

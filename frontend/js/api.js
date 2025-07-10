@@ -119,10 +119,10 @@ export async function submitAllRecordings(restartHandler) {
             state.setIsUploading(false);
             dom.updateUploadProgress(100);
 
-            // Set margin-top of .control-row.submit-row to 0.1rem after successful submit
+            // Set margin-top of .control-row.submit-row to 0.1.2rem after successful submit
             const submitRow = document.querySelector('.control-row.submit-row');
             if (submitRow) {
-                submitRow.style.marginTop = '0.1rem';
+                submitRow.style.marginTop = '0.1.2rem';
             }
 
             await delay(600);

@@ -20,6 +20,9 @@ COPY . .
 RUN curl -fsSL https://browser.sentry-cdn.com/${SENTRY_VERSION}/bundle.min.js -o sentry.bundle.min.js
 RUN curl -fsSL https://browser.sentry-cdn.com/${SENTRY_VERSION}/bundle.tracing.min.js -o sentry.bundle.tracing.min.js
 
+RUN curl -fsSL https://browser.sentry-cdn.com/${SENTRY_VERSION}/bundle.min.js.map -o sentry.bundle.min.js.map || true
+RUN curl -fsSL https://browser.sentry-cdn.com/${SENTRY_VERSION}/bundle.tracing.min.js.map -o sentry.bundle.tracing.min.js.map || true
+
 # Copy & make your entrypoint executable
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

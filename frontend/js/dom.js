@@ -248,10 +248,10 @@ export function createThankYouScreen(restartHandler, emailHandler) {
                 <img src="assets/png/llama.png" alt="Lama" class="llama-image" style="max-width: 180px;">
                 <div class="speech-bubble">Udało się!</div>
             </div>
-            <h2 style="color: var(--text-primary-color); margin-top: 1rem;">Dzięki!</h2>
+            <h2 style="color: var(--text-primary-color); margin-top: 1.2rem;">Dzięki!</h2>
             
             <div class="email-form" style="margin-bottom: 2rem; width: 100%; max-width: 420px;">
-                <p class="email-description" style="margin-bottom: 1rem;">Chcesz otrzymać powiadomienie o wynikach badania? Zostaw nam swój adres email.</p>
+                <p class="email-description" style="margin-bottom: 1.2rem;">Chcesz otrzymać powiadomienie o wynikach badania? Zostaw nam swój adres email.</p>
                 <p class="email-ps">PS. Nie wysyłamy spamu, obiecujemy!</p>
                 <div class="email-input-container">
                     <input type="email" id="email-input" class="email-input" placeholder="twój@email.com">
@@ -293,11 +293,11 @@ export function createStartScreen(startHandler) {
 
 
     startContainer.innerHTML = `
-        <div class="llama-container" style="margin-bottom: 1rem;">
-             <img src="assets/png/llama.png" alt="Lama" class="llama-image" style="max-width: 150px; margin-bottom: 1rem;">
+        <div class="llama-container" style="margin-bottom: 1.2rem;">
+             <img src="assets/png/llama.png" alt="Lama" class="llama-image" style="max-width: 150px; margin-bottom: 1.2rem;">
         </div>
-        <h2 style="margin-bottom: 1rem; color: var(--text-primary-color);">Hejo! Jestem lama</h2>
-        <p style="margin-bottom: 2rem; font-size: 1.1rem; max-width: 400px; color: var(--text-secondary-color);">Chcesz być moim pomocnikiem i powiedzieć kilka głosek?</p>
+        <h2 style="margin-bottom: 1.2rem; color: var(--text-primary-color);">Hejo! Jestem lama</h2>
+        <p style="margin-bottom: 2rem; font-size: 1.1.2rem; max-width: 400px; color: var(--text-secondary-color);">Chcesz być moim pomocnikiem i powiedzieć kilka głosek?</p>
         <button id="start-app-btn" class="btn btn-primary btn-start">Zaczynamy!</button>
     `;
 
@@ -462,7 +462,7 @@ export function addCustomStyles() {
         .email-input {
             flex: 1;
             padding: 0.75rem;
-            font-size: 1rem;
+            font-size: 1.2rem;
             border: 1px solid var(--border-color);
             border-radius: 4px;
             outline: none;
@@ -475,7 +475,7 @@ export function addCustomStyles() {
 
         .btn-email-submit {
             padding: 0.75rem 1.5rem;
-            font-size: 1rem;
+            font-size: 1.2rem;
             color: #fff;
             background-color: var(--primary-color);
             border: none;
@@ -530,9 +530,9 @@ export function setMicrophoneAccessUI(isGranted, message = "", hideRetryButton =
             micOverlay.style.justifyContent = 'center';
             micOverlay.innerHTML = `
                 <div style="max-width: 350px; width: 90vw; text-align: center; display: flex; flex-direction: column; align-items: center;">
-                  <h2 style="color: var(--error-color, #FC5C65); margin-bottom: 1rem;">Brak dostępu do mikrofonu</h2>
-                  <p id="mic-access-message" style="font-size: 1.1rem; margin-bottom: 1.5rem;">${message || 'Aby korzystać z aplikacji, musisz zezwolić na dostęp do mikrofonu.<br>Proszę kliknąć poniższy przycisk, aby spróbować ponownie.'}</p>
-                  <button id="mic-access-btn" class="btn btn-primary" style="margin-top: 1rem; display: ${hideRetryButton ? 'none' : 'block'}; margin-left: auto; margin-right: auto; padding: 1.1rem 2.5rem; font-size: 1.05rem; max-width: 100%; width: 100%; white-space: normal; word-break: break-word; line-height: 1.25; box-sizing: border-box;">Zezwól na dostęp do mikrofonu</button>
+                  <h2 style="color: var(--error-color, #FC5C65); margin-bottom: 1.2rem;">Brak dostępu do mikrofonu</h2>
+                  <p id="mic-access-message" style="font-size: 1.1.2rem; margin-bottom: 1.5rem;">${message || 'Aby korzystać z aplikacji, musisz zezwolić na dostęp do mikrofonu.<br>Proszę kliknąć poniższy przycisk, aby spróbować ponownie.'}</p>
+                  <button id="mic-access-btn" class="btn btn-primary" style="margin-top: 1.2rem; display: ${hideRetryButton ? 'none' : 'block'}; margin-left: auto; margin-right: auto; padding: 1.1.2rem 2.5rem; font-size: 1.05rem; max-width: 100%; width: 100%; white-space: normal; word-break: break-word; line-height: 1.25; box-sizing: border-box;">Zezwól na dostęp do mikrofonu</button>
                 </div>
             `;
             document.body.appendChild(micOverlay);
