@@ -40,6 +40,44 @@ export async function fetchPhonemes() {
     }
 }
 
+// New function to fetch initial phonemes for quick start
+export async function fetchInitialPhonemes(count = 2) {
+    try {
+        sentryUtils.logInfo('Fetching initial phonemes for quick start', { 
+            url: `${BACKEND_URL}/phonemes`,
+            requestedCount: count
+        });
+        
+        const response = await fetch(`${BACKEND_URL}/phonemes`);
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to fetch phonemes: ${response.status} ${errorText}`);
+        }
+        const allPhonemes = await response.json();
+        
+        // Take only the first 'count' phonemes for quick start
+        const initialPhonemes = allPhonemes.slice(0, count);
+        
+        sentryUtils.logInfo('Initial phonemes fetched successfully', { 
+            totalPhonemes: allPhonemes.length,
+            initialCount: initialPhonemes.length,
+            initialPhonemes: initialPhonemes.join(', ')
+        });
+        
+        // Set initial phonemes in state
+        state.setPhonemes(initialPhonemes);
+        
+        return { initialPhonemes, allPhonemes };
+    } catch (error) {
+        console.error("Error fetching initial phonemes:", error);
+        sentryUtils.captureException(error, { 
+            context: 'fetchInitialPhonemes',
+            step: 'network_request'
+        });
+        throw error;
+    }
+}
+
 export async function submitAllRecordings(restartHandler) {
     if (state.getIsUploading() || state.getHasSubmitted()) {
         sentryUtils.logWarning('Submission already in progress or completed', {

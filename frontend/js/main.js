@@ -11,7 +11,8 @@ import {
     removeThankYouScreen,
     createThankYouScreen,
     removeFadeOutEffect,
-    hideUploadProgress
+    hideUploadProgress,
+    scrollCurrentPhonemeIntoView
 } from './dom.js';
 import {
     handleRecord,
@@ -20,11 +21,12 @@ import {
     handleNext,
     handlePrev,
     handleSubmit,
-    preloadPerfectPronunciationAudio,
+    preloadAudioProgressively,
+    updatePhonemesProgressively,
     initializeAudioRecorder,
     cleanupAudioRecorder
 } from './handlers.js';
-import { fetchPhonemes } from './api.js';
+import { fetchInitialPhonemes } from './api.js';
 import * as state from './state.js';
 import { sentryUtils } from './sentry.js';
 
@@ -36,34 +38,83 @@ const prevBtn = document.getElementById('prev-btn');
 const submitBtn = document.getElementById('submit-btn');
 
 let dataLoadingPromise = null;
+let backgroundLoadingPromise = null;
 
 const preloadData = async () => {
     try {
-        sentryUtils.logInfo('Starting data preload', { step: 'preload_start' });
+        sentryUtils.logInfo('Starting progressive data preload', { step: 'preload_start' });
         
-        const phonemes = await fetchPhonemes();
-        if (!phonemes || phonemes.length === 0) {
-            sentryUtils.logError('No phonemes fetched during preload', { phonemesCount: 0 });
-            throw new Error("No phonemes fetched.");
+        // Fetch initial phonemes (first 2) for quick start
+        const { initialPhonemes, allPhonemes } = await fetchInitialPhonemes(2);
+        
+        if (!initialPhonemes || initialPhonemes.length === 0) {
+            sentryUtils.logError('No initial phonemes fetched during preload', { phonemesCount: 0 });
+            throw new Error("No initial phonemes fetched.");
         }
         
-        sentryUtils.logInfo('Phonemes fetched successfully', { phonemesCount: phonemes.length });
-        
-        await preloadPerfectPronunciationAudio(phonemes);
-        
-        sentryUtils.logInfo('Data preload completed successfully', { 
-            phonemesCount: phonemes.length,
-            step: 'preload_complete' 
+        sentryUtils.logInfo('Initial phonemes fetched successfully', { 
+            initialCount: initialPhonemes.length,
+            totalCount: allPhonemes.length
         });
         
-        return phonemes;
+        // Preload audio for initial phonemes only
+        await preloadAudioProgressively(allPhonemes, 2);
+        
+        sentryUtils.logInfo('Initial data preload completed successfully', { 
+            initialPhonemes: initialPhonemes.length,
+            totalPhonemes: allPhonemes.length,
+            step: 'initial_preload_complete' 
+        });
+        
+        // Start background loading of remaining phonemes
+        backgroundLoadingPromise = loadRemainingDataInBackground(allPhonemes);
+        
+        return { initialPhonemes, allPhonemes };
     } catch (error) {
-        console.error('Preloading data failed:', error);
+        console.error('Preloading initial data failed:', error);
         sentryUtils.captureException(error, { 
             context: 'preloadData',
-            phonemesLength: phonemes ? phonemes.length : 0 
+            step: 'initial_preload'
         });
         throw error;
+    }
+};
+
+const loadRemainingDataInBackground = async (allPhonemes) => {
+    try {
+        sentryUtils.logInfo('Starting background data loading', { 
+            totalPhonemes: allPhonemes.length 
+        });
+        
+        // Small delay to ensure UI is shown first
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Update state and UI with all phonemes
+        updatePhonemesProgressively(allPhonemes);
+        
+        // Update UI components with all phonemes
+        createPhonemeBubbles();
+        updateProgressCounter();
+        updateNavigationButtons();
+        
+        // Scroll to current phoneme after UI update (in case user is not on first phoneme)
+        setTimeout(() => {
+            scrollCurrentPhonemeIntoView();
+        }, 200);
+        
+        sentryUtils.logInfo('Background data loading completed', { 
+            totalPhonemes: allPhonemes.length 
+        });
+        
+        return allPhonemes;
+    } catch (error) {
+        console.error('Background loading failed:', error);
+        sentryUtils.logWarning('Background data loading failed', { 
+            error: error.message,
+            totalPhonemes: allPhonemes.length
+        });
+        // Don't throw - app can continue with initial phonemes
+        return null;
     }
 };
 
@@ -84,6 +135,14 @@ const restartApp = () => {
     updatePhonemeDisplay();
     updateProgressCounter();
     updateNavigationButtons();
+    
+    // Auto-scroll to the first phoneme
+    setTimeout(() => {
+        scrollCurrentPhonemeIntoView();
+        sentryUtils.logUserAction('app_restarted', { 
+            scrolledToFirstPhoneme: true 
+        });
+    }, 100); // Small delay to ensure UI is rendered
 };
 
 const startApp = async () => {
@@ -106,10 +165,10 @@ const startApp = async () => {
         
         sentryUtils.logInfo('Microphone access granted', { step: 'microphone_access' });
 
-        const phonemes = await dataLoadingPromise;
+        const { initialPhonemes, allPhonemes } = await dataLoadingPromise;
 
         // This check is important in case preloading failed
-        if (!phonemes) {
+        if (!initialPhonemes || !allPhonemes) {
             sentryUtils.logError('Phonemes not available after preload', { step: 'phonemes_check' });
             throw new Error("Phonemes not available. Preloading might have failed.");
         }
@@ -120,16 +179,48 @@ const startApp = async () => {
         }
         showGameUI(true);
 
+        // Initialize UI with initial phonemes - will be updated when background loading completes
         createPhonemeBubbles();
         updatePhonemeDisplay();
         updateProgressCounter();
         updateNavigationButtons();
         
-        sentryUtils.logInfo('Application started successfully', { 
-            phonemesCount: phonemes.length,
+        // Show subtle loading indicator for background loading
+        const progressContainer = document.querySelector('.progress-container');
+        if (progressContainer && allPhonemes.length > initialPhonemes.length) {
+            const loadingIndicator = document.createElement('div');
+            loadingIndicator.id = 'background-loading-indicator';
+            loadingIndicator.style.cssText = `
+                position: absolute;
+                top: -10px;
+                right: 10px;
+                font-size: 0.7rem;
+                color: #666;
+                opacity: 0.7;
+                animation: pulse 2s infinite;
+            `;
+            loadingIndicator.textContent = 'Ładowanie...';
+            progressContainer.style.position = 'relative';
+            progressContainer.appendChild(loadingIndicator);
+            
+            // Remove indicator when background loading completes
+            backgroundLoadingPromise.finally(() => {
+                const indicator = document.getElementById('background-loading-indicator');
+                if (indicator) {
+                    indicator.remove();
+                }
+            });
+        }
+        
+        sentryUtils.logInfo('Application started successfully with initial phonemes', { 
+            initialPhonemes: initialPhonemes.length,
+            totalPhonemes: allPhonemes.length,
             step: 'app_complete' 
         });
-        sentryUtils.logUserAction('app_started', { phonemesCount: phonemes.length });
+        sentryUtils.logUserAction('app_started', { 
+            initialPhonemes: initialPhonemes.length,
+            totalPhonemes: allPhonemes.length 
+        });
 
     } catch (error) {
         console.error('Starting app failed:', error);

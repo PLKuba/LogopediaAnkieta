@@ -450,6 +450,10 @@ export function addCustomStyles() {
         .speaking {
             animation: speaking 0.5s infinite;
         }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 0.3; }
+        }
 
         /* --- START: CSS for Email Input Layout --- */
 

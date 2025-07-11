@@ -535,6 +535,42 @@ export async function preloadPerfectPronunciationAudio(phonemes) {
     });
 }
 
+// New function for progressive audio loading
+export async function preloadAudioProgressively(allPhonemes, initialCount = 2) {
+    if (!Array.isArray(allPhonemes)) return;
+    
+    const initialPhonemes = allPhonemes.slice(0, initialCount);
+    const remainingPhonemes = allPhonemes.slice(initialCount);
+    
+    sentryUtils.logInfo('Starting progressive audio preload', { 
+        totalPhonemes: allPhonemes.length,
+        initialCount: initialPhonemes.length,
+        remainingCount: remainingPhonemes.length
+    });
+    
+    // Load initial phonemes synchronously
+    await preloadPerfectPronunciationAudio(initialPhonemes);
+    
+    // Load remaining phonemes in background
+    if (remainingPhonemes.length > 0) {
+        sentryUtils.logInfo('Starting background audio preload', { 
+            remainingCount: remainingPhonemes.length 
+        });
+        
+        // Don't await this - let it run in background
+        preloadPerfectPronunciationAudio(remainingPhonemes).then(() => {
+            sentryUtils.logInfo('Background audio preload completed', { 
+                remainingCount: remainingPhonemes.length 
+            });
+        }).catch((error) => {
+            sentryUtils.logWarning('Background audio preload failed', { 
+                remainingCount: remainingPhonemes.length,
+                error: error.message
+            });
+        });
+    }
+}
+
 function navigateToPhoneme(newIndex) {
     state.setCurrentPhonemeIndex(newIndex);
     state.setAudioBlob(null);
@@ -735,4 +771,15 @@ export function initializeAudioRecorder() {
         audioRecorder = new AudioRecorder();
     }
     return audioRecorder;
+}
+
+// Function to update phonemes progressively
+export function updatePhonemesProgressively(allPhonemes) {
+    // Update state with all phonemes
+    state.setPhonemes(allPhonemes);
+    
+    // Update UI components (we'll need to call this from main.js after DOM is available)
+    sentryUtils.logInfo('Phonemes state updated with all phonemes', { 
+        totalPhonemes: allPhonemes.length 
+    });
 }
