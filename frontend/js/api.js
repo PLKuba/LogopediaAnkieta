@@ -109,53 +109,54 @@ export async function submitAllRecordings(restartHandler) {
 
     const recordings = state.getRecordings();
     const totalRecordings = Object.keys(recordings).length;
-    let uploadedCount = 0;
-    let failedCount = 0;
 
     try {
+        // Prepare FormData for bulk upload
+        const formData = new FormData();
+        const phonemes = [];
+        
+        // Add all audio files and collect phoneme names
         for (const [phoneme, blob] of Object.entries(recordings)) {
-            try {
-                const filename = `${phoneme}_${Date.now()}.webm`;
-                const formData = new FormData();
-                formData.append("audio", blob, filename);
-                formData.append("phoneme", phoneme);
-
-                const response = await fetch(`${BACKEND_URL}/upload`, {
-                    method: "POST",
-                    body: formData
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Upload failed for ${phoneme}`);
-                }
-
-                uploadedCount++;
-                const progress = (uploadedCount / totalRecordings) * 100;
-                dom.updateUploadProgress(progress);
-
-            } catch (error) {
-                console.error(`Error uploading ${phoneme}:`, error);
-                sentryUtils.captureException(error, { 
-                    context: 'uploadRecording',
-                    phoneme: phoneme,
-                    attempt: 'single_upload'
-                });
-                failedCount++;
-            }
+            const filename = `${phoneme}_${Date.now()}.wav`;
+            formData.append("audios", blob, filename);
+            phonemes.push(phoneme);
         }
+        
+        console.log('Preparing bulk upload:', { 
+            totalRecordings: totalRecordings, 
+            phonemes: phonemes 
+        });
+        
+        // Add phonemes as form data
+        phonemes.forEach(phoneme => {
+            formData.append("phonemes", phoneme);
+        });
 
-        if (failedCount === 0) {
+        // Show upload progress
+        dom.updateUploadProgress(50); // Show progress while uploading
+
+        // Single bulk upload request
+        const response = await fetch(`${BACKEND_URL}/upload_bulk`, {
+            method: "POST",
+            body: formData
+        });
+
+        const responseText = await response.text();
+        console.log('Bulk upload response:', { status: response.status, message: responseText });
+        
+        if (response.ok) {
+            // Success: all files uploaded
+            dom.updateUploadProgress(100);
             sentryUtils.logInfo('All recordings uploaded successfully', { 
-                totalRecordings: Object.keys(recordings).length,
-                failedCount: 0
+                totalRecordings: totalRecordings,
+                responseMessage: responseText
             });
             sentryUtils.logUserAction('submit_recordings_success', { 
-                totalRecordings: Object.keys(recordings).length 
+                totalRecordings: totalRecordings 
             });
             
             state.setHasSubmitted(true);
             state.setIsUploading(false);
-            dom.updateUploadProgress(100);
 
             // Set margin-top of .control-row.submit-row to 0.1.2rem after successful submit
             const submitRow = document.querySelector('.control-row.submit-row');
@@ -173,43 +174,47 @@ export async function submitAllRecordings(restartHandler) {
             await delay(1300);
             dom.createThankYouScreen(restartHandler, submitEmail);
 
-        } else {
-            sentryUtils.logError('Some recordings failed to upload', { 
-                totalRecordings: Object.keys(recordings).length,
-                failedCount: failedCount,
-                uploadedCount: uploadedCount
+        } else if (response.status === 207) {
+            // Partial success (some files failed)
+            console.warn('Partial upload success:', responseText);
+            sentryUtils.logWarning('Some recordings failed to upload', { 
+                totalRecordings: totalRecordings,
+                responseMessage: responseText,
+                statusCode: response.status
             });
             sentryUtils.logUserAction('submit_recordings_partial_failure', { 
-                totalRecordings: Object.keys(recordings).length,
-                failedCount: failedCount
+                totalRecordings: totalRecordings,
+                responseMessage: responseText
             });
             
-            dom.setStatus(`Wysłano ${uploadedCount} z ${totalRecordings} nagrań. ${failedCount} nie udało się wysłać.`, "error");
+            dom.setStatus(`Częściowe wysłanie zakończone. Sprawdź szczegóły.`, "warning");
             state.setIsUploading(false);
-            // Re-enable submit button on error
+            dom.hideUploadProgress();
+            // Re-enable submit button on partial failure
             if (submitBtn) {
                 submitBtn.disabled = false;
                 submitBtn.classList.remove('disabled');
             }
+
+        } else {
+            // Complete failure
+            throw new Error(`Upload failed with status ${response.status}: ${responseText}`);
         }
 
     } catch (error) {
-        console.error("Error during batch upload:", error);
+        console.error("Error during bulk upload:", error);
         sentryUtils.captureException(error, { 
-            context: 'submitAllRecordings',
-            totalRecordings: Object.keys(state.getRecordings()).length
+            context: 'submitAllRecordings_bulk',
+            totalRecordings: totalRecordings,
+            uploadMethod: 'bulk_upload'
         });
         dom.setStatus("Wystąpił błąd podczas wysyłania nagrań.", "error");
         state.setIsUploading(false);
+        dom.hideUploadProgress();
         // Re-enable submit button on error
         if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.classList.remove('disabled');
-        }
-    } finally {
-        if (failedCount > 0) {
-            state.setIsUploading(false);
-            dom.hideUploadProgress();
         }
     }
 }

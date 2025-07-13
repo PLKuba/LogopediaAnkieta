@@ -141,6 +141,8 @@ class AudioRecorder {
             }, 100); // Small delay to ensure smooth transition
             
             // Determine the best MIME type for the browser
+            // Note: Most browsers don't support audio/wav natively with MediaRecorder
+            // We'll record in a supported format and convert to WAV
             const mimeTypes = [
                 'audio/webm;codecs=opus',
                 'audio/webm',
@@ -190,17 +192,30 @@ class AudioRecorder {
                 console.log('MediaRecorder started successfully');
             };
             
-            this.mediaRecorder.onstop = () => {
+            this.mediaRecorder.onstop = async () => {
                 console.log('=== RECORDING STOPPED - CREATING AUDIO BLOB ===');
                 console.log('Audio chunks count:', this.audioChunks.length);
                 console.log('Total audio data size:', this.audioChunks.reduce((total, chunk) => total + chunk.size, 0), 'bytes');
                 console.log('Selected MIME type:', selectedMimeType || 'audio/wav');
                 
-                this.audioBlob = new Blob(this.audioChunks, { 
+                const originalBlob = new Blob(this.audioChunks, { 
                     type: selectedMimeType || 'audio/wav' 
                 });
                 
-                console.log('Created audio blob:');
+                console.log('Created original audio blob:');
+                console.log('- Size:', originalBlob.size, 'bytes');
+                console.log('- Type:', originalBlob.type);
+                
+                // Convert to WAV format if not already WAV
+                if (!originalBlob.type.includes('wav')) {
+                    console.log('Converting audio to WAV format...');
+                    this.audioBlob = await convertBlobToWAV(originalBlob);
+                } else {
+                    console.log('Audio already in WAV format');
+                    this.audioBlob = originalBlob;
+                }
+                
+                console.log('Final audio blob:');
                 console.log('- Size:', this.audioBlob.size, 'bytes');
                 console.log('- Type:', this.audioBlob.type);
                 console.log('- Browser info:', navigator.userAgent);
@@ -296,7 +311,14 @@ class AudioRecorder {
         if (isLastPhoneme) {
             const recordings = state.getRecordings();
             const currentPhoneme = state.getPhonemes()[state.getCurrentPhonemeIndex()];
-            recordings[currentPhoneme] = state.getAudioBlob();
+            const audioBlob = state.getAudioBlob();
+            console.log('Saving audio recording:', {
+                phoneme: currentPhoneme,
+                blobType: audioBlob.type,
+                blobSize: audioBlob.size,
+                format: audioBlob.type.includes('wav') ? 'WAV' : 'Other'
+            });
+            recordings[currentPhoneme] = audioBlob;
             state.setRecordings(recordings);
             dom.DOMElements.submitBtn.classList.remove("hidden");
             dom.DOMElements.submitBtn.disabled = false;
@@ -782,4 +804,75 @@ export function updatePhonemesProgressively(allPhonemes) {
     sentryUtils.logInfo('Phonemes state updated with all phonemes', { 
         totalPhonemes: allPhonemes.length 
     });
+}
+
+// WAV audio conversion utilities
+function encodeWAV(samples, sampleRate = 44100) {
+    const buffer = new ArrayBuffer(44 + samples.length * 2);
+    const view = new DataView(buffer);
+    
+    // WAV header
+    const writeString = (offset, string) => {
+        for (let i = 0; i < string.length; i++) {
+            view.setUint8(offset + i, string.charCodeAt(i));
+        }
+    };
+    
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + samples.length * 2, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeString(36, 'data');
+    view.setUint32(40, samples.length * 2, true);
+    
+    // PCM data
+    const floatTo16BitPCM = (output, offset, input) => {
+        for (let i = 0; i < input.length; i++, offset += 2) {
+            const s = Math.max(-1, Math.min(1, input[i]));
+            output.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        }
+    };
+    
+    floatTo16BitPCM(view, 44, samples);
+    return buffer;
+}
+
+async function convertBlobToWAV(blob) {
+    try {
+        sentryUtils.logInfo('Converting audio blob to WAV format', {
+            originalType: blob.type,
+            originalSize: blob.size
+        });
+        
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const arrayBuffer = await blob.arrayBuffer();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        
+        const samples = audioBuffer.getChannelData(0);
+        const wavBuffer = encodeWAV(samples, audioBuffer.sampleRate);
+        const wavBlob = new Blob([wavBuffer], { type: 'audio/wav' });
+        
+        sentryUtils.logInfo('Audio conversion to WAV completed', {
+            originalSize: blob.size,
+            wavSize: wavBlob.size,
+            sampleRate: audioBuffer.sampleRate
+        });
+        
+        return wavBlob;
+    } catch (error) {
+        sentryUtils.logError('Failed to convert audio to WAV', {
+            error: error.message,
+            originalType: blob.type
+        });
+        console.error('WAV conversion failed:', error);
+        // Return original blob as fallback
+        return blob;
+    }
 }
