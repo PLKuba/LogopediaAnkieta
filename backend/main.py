@@ -73,6 +73,59 @@ async def upload_audio(audio: UploadFile, phoneme: str = Form(...)):
     return PlainTextResponse("Próbka zapisana w chmurze.", status_code=200)
 
 
+@app.post("/upload_bulk")
+async def upload_audios(audios: List[UploadFile] = UploadFile(...), phonemes: List[str] = Form(...)):
+    if len(audios) != len(phonemes):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Number of audio files ({len(audios)}) does not match number of phonemes ({len(phonemes)})."
+        )
+
+    # Ensure temp directory exists
+    temp_path = Path("temp")
+    temp_path.mkdir(exist_ok=True)
+
+    uploaded = 0
+    errors = []
+
+    # Pair each file with its phoneme
+    for audio, phoneme in zip(audios, phonemes):
+        try:
+            # Build destination filename: phoneme/<original-filename>
+            dest_name = f"{phoneme}/{audio.filename}"
+            temp_file = temp_path / audio.filename
+
+            # Save locally
+            with temp_file.open("wb") as buffer:
+                shutil.copyfileobj(audio.file, buffer)
+
+            # Upload to B2 (or your cloud bucket)
+            audio_samples_bucket.upload_local_file(
+                local_file=temp_file,
+                file_name=dest_name,
+                file_infos={"phoneme": phoneme}
+            )
+
+            # Clean up temp file
+            temp_file.unlink()
+            uploaded += 1
+
+        except Exception as exc:
+            errors.append(f"{audio.filename} (phoneme={phoneme}): {exc}")
+
+    # Build the response
+    if errors:
+        return PlainTextResponse(
+            f"Uploaded {uploaded}/{len(audios)}, with errors:\n" + "\n".join(errors),
+            status_code=207
+        )
+
+    return PlainTextResponse(
+        f"Successfully uploaded all {uploaded} audio samples.",
+        status_code=200
+    )
+
+
 @app.get("/audioExamples")
 async def get_audio_file(file_name: str = Query(...)):
     try:
