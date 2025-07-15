@@ -2,7 +2,7 @@
 FROM nginx:1.25-alpine
 
 # Allow passing in a Sentry version (defaults to latest stable)
-ARG SENTRY_VERSION=7.0.0
+ARG SENTRY_VERSION=8.0.0
 
 # Install envsubst (for your entrypoint) and curl (to download bundles)
 RUN apk add --no-cache gettext curl
@@ -16,12 +16,8 @@ RUN rm -rf ./*
 # Copy frontend static files to nginx html directory
 COPY . .
 
-# Download Sentry bundles at build time
-RUN curl -fsSL https://browser.sentry-cdn.com/${SENTRY_VERSION}/bundle.min.js -o sentry.bundle.min.js
-RUN curl -fsSL https://browser.sentry-cdn.com/${SENTRY_VERSION}/bundle.tracing.min.js -o sentry.bundle.tracing.min.js
-
-RUN curl -fsSL https://browser.sentry-cdn.com/${SENTRY_VERSION}/bundle.min.js.map -o sentry.bundle.min.js.map || true
-RUN curl -fsSL https://browser.sentry-cdn.com/${SENTRY_VERSION}/bundle.tracing.min.js.map -o sentry.bundle.tracing.min.js.map || true
+# Note: Using Sentry CDN loader instead of local bundles
+# The Sentry script is loaded directly from https://js-de.sentry-cdn.com/
 
 # Copy & make your entrypoint executable
 COPY entrypoint.sh /entrypoint.sh

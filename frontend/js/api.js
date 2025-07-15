@@ -289,6 +289,10 @@ export async function submitAllRecordings(restartHandler) {
         
         if (isMobile && (isLoadFailed || isNetworkError)) {
             console.log('Bulk upload failed on mobile, retrying with individual uploads...');
+            
+            // Capture replay for mobile upload failures
+            sentryUtils.replay.captureReplay('mobile_upload_failure');
+            
             sentryUtils.logWarning('Bulk upload failed on mobile, falling back to individual uploads', {
                 originalError: error.message,
                 totalRecordings: totalRecordings,
@@ -332,7 +336,9 @@ export async function submitAllRecordings(restartHandler) {
                     return; // Success, exit function
                     
                 } else {
-                    // Some individual uploads failed too
+                    // Some individual uploads failed too - capture replay
+                    sentryUtils.replay.captureReplay('individual_upload_partial_failure');
+                    
                     sentryUtils.logError('Individual upload fallback also failed', { 
                         totalRecordings: totalRecordings,
                         failedCount: failedCount,
@@ -345,6 +351,10 @@ export async function submitAllRecordings(restartHandler) {
                 
             } catch (fallbackError) {
                 console.error("Individual upload fallback also failed:", fallbackError);
+                
+                // Capture replay for complete upload failure
+                sentryUtils.replay.captureReplay('complete_upload_failure');
+                
                 sentryUtils.captureException(fallbackError, { 
                     context: 'submitAllRecordings_fallback',
                     originalError: error.message,

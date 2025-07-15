@@ -259,6 +259,22 @@ const startApp = async () => {
 const initializeApp = () => {
     sentryUtils.logInfo('Initializing application', { step: 'init_start' });
     
+    // Check if Session Replay is available and log its status
+    if (typeof Sentry !== 'undefined') {
+        const client = Sentry.getCurrentHub().getClient();
+        const options = client?.getOptions();
+        if (options?.replaysSessionSampleRate || options?.replaysOnErrorSampleRate) {
+            sentryUtils.logInfo('Sentry Session Replay initialized', {
+                sessionSampleRate: options.replaysSessionSampleRate,
+                errorSampleRate: options.replaysOnErrorSampleRate,
+                feature: 'session_replay_enabled'
+            });
+            console.log('✅ Sentry Session Replay is active');
+        } else {
+            console.warn('⚠️ Sentry Session Replay not configured');
+        }
+    }
+    
     initDOMElements();
     // Start preloading data in the background
     dataLoadingPromise = preloadData();
