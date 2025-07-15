@@ -111,6 +111,84 @@ export async function submitAllRecordings(restartHandler) {
     const totalRecordings = Object.keys(recordings).length;
 
     try {
+        // Check if we should use mobile-friendly upload
+        const isMobile = isMobileDevice();
+        const isIOS = isIOSDevice();
+        const estimatedSize = estimateFormDataSize(recordings);
+        const sizeLimitMB = isIOS ? 25 : 50; // iOS has stricter limits
+        const shouldUseFallback = isMobile && (estimatedSize > sizeLimitMB * 1024 * 1024);
+
+        console.log('Upload strategy decision:', {
+            isMobile,
+            isIOS,
+            estimatedSizeMB: Math.round(estimatedSize / (1024 * 1024)),
+            sizeLimitMB,
+            shouldUseFallback,
+            totalRecordings
+        });
+
+        if (shouldUseFallback) {
+            sentryUtils.logInfo('Using individual upload fallback for mobile', {
+                reason: 'size_limit_exceeded',
+                estimatedSizeMB: Math.round(estimatedSize / (1024 * 1024)),
+                device: isIOS ? 'iOS' : 'mobile'
+            });
+
+            // Use individual uploads for mobile when size is too large
+            const { uploadedCount, failedCount } = await submitRecordingsIndividually(recordings, totalRecordings);
+            
+            if (failedCount === 0) {
+                // All individual uploads succeeded
+                sentryUtils.logInfo('All recordings uploaded successfully via individual upload', { 
+                    totalRecordings: totalRecordings,
+                    uploadMethod: 'individual_fallback'
+                });
+                sentryUtils.logUserAction('submit_recordings_success', { 
+                    totalRecordings: totalRecordings,
+                    uploadMethod: 'individual_fallback'
+                });
+                
+                state.setHasSubmitted(true);
+                state.setIsUploading(false);
+
+                // Set margin-top of .control-row.submit-row to 0.1.2rem after successful submit
+                const submitRow = document.querySelector('.control-row.submit-row');
+                if (submitRow) {
+                    submitRow.style.marginTop = '0.1.2rem';
+                }
+
+                await delay(600);
+                dom.hideUploadProgress();
+                dom.setStatus(`Wysyłanie zakończone! (${totalRecordings}/${totalRecordings})`, "success");
+
+                await delay(1000);
+                dom.applyFadeOutEffect();
+
+                await delay(1300);
+                dom.createThankYouScreen(restartHandler, submitEmail);
+
+            } else {
+                // Some individual uploads failed
+                sentryUtils.logError('Some recordings failed to upload via individual upload', { 
+                    totalRecordings: totalRecordings,
+                    failedCount: failedCount,
+                    uploadedCount: uploadedCount,
+                    uploadMethod: 'individual_fallback'
+                });
+                
+                dom.setStatus(`Wysłano ${uploadedCount} z ${totalRecordings} nagrań. ${failedCount} nie udało się wysłać.`, "error");
+                state.setIsUploading(false);
+                dom.hideUploadProgress();
+                // Re-enable submit button on error
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove('disabled');
+                }
+            }
+            return; // Exit early after individual upload
+        }
+
+        // Continue with bulk upload for desktop/small uploads
         // Prepare FormData for bulk upload
         const formData = new FormData();
         const phonemes = [];
@@ -203,12 +281,88 @@ export async function submitAllRecordings(restartHandler) {
 
     } catch (error) {
         console.error("Error during bulk upload:", error);
-        sentryUtils.captureException(error, { 
-            context: 'submitAllRecordings_bulk',
-            totalRecordings: totalRecordings,
-            uploadMethod: 'bulk_upload'
-        });
-        dom.setStatus("Wystąpił błąd podczas wysyłania nagrań.", "error");
+        
+        // Check if this is a mobile device and we should retry with individual uploads
+        const isMobile = isMobileDevice();
+        const isLoadFailed = error.message && error.message.includes('Load failed');
+        const isNetworkError = error.name === 'TypeError' && (error.message.includes('Load failed') || error.message.includes('Failed to fetch'));
+        
+        if (isMobile && (isLoadFailed || isNetworkError)) {
+            console.log('Bulk upload failed on mobile, retrying with individual uploads...');
+            sentryUtils.logWarning('Bulk upload failed on mobile, falling back to individual uploads', {
+                originalError: error.message,
+                totalRecordings: totalRecordings,
+                uploadMethod: 'bulk_to_individual_fallback'
+            });
+            
+            try {
+                dom.setStatus("Bulk upload failed, retrying with individual uploads...", "warning");
+                dom.updateUploadProgress(10); // Reset progress
+                
+                const { uploadedCount, failedCount } = await submitRecordingsIndividually(recordings, totalRecordings);
+                
+                if (failedCount === 0) {
+                    // All individual uploads succeeded
+                    sentryUtils.logInfo('All recordings uploaded successfully via fallback', { 
+                        totalRecordings: totalRecordings,
+                        uploadMethod: 'bulk_to_individual_fallback'
+                    });
+                    sentryUtils.logUserAction('submit_recordings_success', { 
+                        totalRecordings: totalRecordings,
+                        uploadMethod: 'bulk_to_individual_fallback'
+                    });
+                    
+                    state.setHasSubmitted(true);
+                    state.setIsUploading(false);
+
+                    const submitRow = document.querySelector('.control-row.submit-row');
+                    if (submitRow) {
+                        submitRow.style.marginTop = '0.1.2rem';
+                    }
+
+                    await delay(600);
+                    dom.hideUploadProgress();
+                    dom.setStatus(`Wysyłanie zakończone! (${totalRecordings}/${totalRecordings})`, "success");
+
+                    await delay(1000);
+                    dom.applyFadeOutEffect();
+
+                    await delay(1300);
+                    dom.createThankYouScreen(restartHandler, submitEmail);
+                    return; // Success, exit function
+                    
+                } else {
+                    // Some individual uploads failed too
+                    sentryUtils.logError('Individual upload fallback also failed', { 
+                        totalRecordings: totalRecordings,
+                        failedCount: failedCount,
+                        uploadedCount: uploadedCount,
+                        uploadMethod: 'bulk_to_individual_fallback'
+                    });
+                    
+                    dom.setStatus(`Częściowe wysłanie: ${uploadedCount}/${totalRecordings} nagrań.`, "warning");
+                }
+                
+            } catch (fallbackError) {
+                console.error("Individual upload fallback also failed:", fallbackError);
+                sentryUtils.captureException(fallbackError, { 
+                    context: 'submitAllRecordings_fallback',
+                    originalError: error.message,
+                    totalRecordings: totalRecordings,
+                    uploadMethod: 'bulk_to_individual_fallback'
+                });
+                dom.setStatus("Wystąpił błąd podczas wysyłania nagrań.", "error");
+            }
+        } else {
+            // Regular error handling for non-mobile or non-network errors
+            sentryUtils.captureException(error, { 
+                context: 'submitAllRecordings_bulk',
+                totalRecordings: totalRecordings,
+                uploadMethod: 'bulk_upload'
+            });
+            dom.setStatus("Wystąpił błąd podczas wysyłania nagrań.", "error");
+        }
+        
         state.setIsUploading(false);
         dom.hideUploadProgress();
         // Re-enable submit button on error
@@ -286,4 +440,81 @@ export async function submitEmail() {
 function isValidEmail(email) {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(String(email).toLowerCase());
+}
+
+// Mobile detection utility
+function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+           (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPad detection
+}
+
+function isIOSDevice() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+           (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+// Calculate total FormData size estimate
+function estimateFormDataSize(recordings) {
+    let totalSize = 0;
+    for (const [phoneme, blob] of Object.entries(recordings)) {
+        totalSize += blob.size;
+        totalSize += phoneme.length * 2; // Rough estimate for text fields
+        totalSize += 100; // Headers and boundaries estimate
+    }
+    return totalSize;
+}
+
+// Fallback function for individual uploads (mobile-friendly)
+async function submitRecordingsIndividually(recordings, totalRecordings) {
+    let uploadedCount = 0;
+    let failedCount = 0;
+
+    for (const [phoneme, blob] of Object.entries(recordings)) {
+        try {
+            const filename = `${phoneme}_${Date.now()}.wav`;
+            const formData = new FormData();
+            formData.append("audio", blob, filename);
+            formData.append("phoneme", phoneme);
+
+            // Create fetch options with timeout handling
+            const fetchOptions = {
+                method: "POST",
+                body: formData
+            };
+
+            // Add timeout if supported
+            if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+                fetchOptions.signal = AbortSignal.timeout(30000); // 30 seconds timeout
+            }
+
+            const response = await fetch(`${BACKEND_URL}/upload`, fetchOptions);
+
+            if (!response.ok) {
+                const errorText = await response.text().catch(() => 'Unknown error');
+                throw new Error(`Upload failed for ${phoneme}: ${response.status} - ${errorText}`);
+            }
+
+            uploadedCount++;
+            const progress = (uploadedCount / totalRecordings) * 100;
+            dom.updateUploadProgress(progress);
+
+            console.log(`Successfully uploaded ${phoneme} (${uploadedCount}/${totalRecordings})`);
+
+            // Small delay between uploads to prevent overwhelming mobile
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+        } catch (error) {
+            console.error(`Error uploading ${phoneme}:`, error);
+            sentryUtils.captureException(error, { 
+                context: 'uploadRecording_individual',
+                phoneme: phoneme,
+                attempt: 'mobile_fallback',
+                blobSize: blob.size,
+                errorMessage: error.message
+            });
+            failedCount++;
+        }
+    }
+
+    return { uploadedCount, failedCount };
 }
