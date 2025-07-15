@@ -18,6 +18,7 @@ let isUploading = false;
 let recordings = {};
 let hasSubmitted = false;
 let autoStopTimeout = null;
+let hasShownInstructions = false;
 let sessionId = generateSessionId();
 
 export function getPhonemes() { return phonemes; }
@@ -32,6 +33,7 @@ export function getIsUploading() { return isUploading; }
 export function getRecordings() { return recordings; }
 export function getAutoStopTimeout() { return autoStopTimeout; }
 export function getHasSubmitted() { return hasSubmitted; }
+export function getHasShownInstructions() { return hasShownInstructions; }
 export function getSessionId() { return sessionId; }
 
 export function setPhonemes(newPhonemes) {
@@ -80,6 +82,10 @@ export function setAutoStopTimeout(timeout) {
 
 export function setHasSubmitted(submitted) {
     hasSubmitted = submitted;
+}
+
+export function setHasShownInstructions(shown) {
+    hasShownInstructions = shown;
 }
 
 export function resetStateForRestart() {

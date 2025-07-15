@@ -12,7 +12,8 @@ import {
     createThankYouScreen,
     removeFadeOutEffect,
     hideUploadProgress,
-    scrollCurrentPhonemeIntoView
+    scrollCurrentPhonemeIntoView,
+    showInstructionsPopup
 } from './dom.js';
 import {
     handleRecord,
@@ -171,6 +172,20 @@ const startApp = async () => {
         if (!initialPhonemes || !allPhonemes) {
             sentryUtils.logError('Phonemes not available after preload', { step: 'phonemes_check' });
             throw new Error("Phonemes not available. Preloading might have failed.");
+        }
+
+        // Show instructions popup only on first launch
+        if (!state.getHasShownInstructions()) {
+            sentryUtils.logInfo('Showing instructions popup for first-time user');
+            sentryUtils.logUserAction('instructions_popup_shown');
+            
+            await new Promise(resolve => {
+                showInstructionsPopup(allPhonemes.length, () => {
+                    state.setHasShownInstructions(true);
+                    sentryUtils.logUserAction('instructions_popup_dismissed');
+                    resolve();
+                });
+            });
         }
 
         const startContainer = document.getElementById('start-container');

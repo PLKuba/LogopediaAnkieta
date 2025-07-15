@@ -597,3 +597,41 @@ export async function requestMicrophoneAccessAndUI() {
         return false;
     }
 }
+
+export function showInstructionsPopup(phonemeCount, onContinue) {
+    const popup = document.createElement('div');
+    popup.id = 'instructions-popup';
+    popup.style.animation = 'fadeIn 0.3s ease-out';
+
+    const popupContent = document.createElement('div');
+    popupContent.className = 'popup-content';
+    popupContent.style.animation = 'slideIn 0.4s ease-out';
+
+    popupContent.innerHTML = `
+        <h2>🦙 Zanim zaczniemy, krótka instrukcja</h2>
+        <div class="instruction-text">
+            <p>
+                Twoim zadaniem będzie nagranie <strong>${phonemeCount} głosek</strong>. Pamiętaj, aby mówić powooli, głośno i wyraźnie. 
+                Jeśli nie jesteś pewien poprawnej wymowy, po kliknięciu czerwonego przycisku usłyszysz głos logopedy. Naśladuj go! 
+                Jeśli nie udało ci się poprawnie nagrać dźwięku, bez obaw, po prostu kliknij mikrofon jeszcze raz i nagraj głoskę.
+            </p>
+        </div>
+        <button id="instructions-continue-btn" class="btn btn-primary" style="padding: 0.8rem 2rem;">
+            Jedziemy!
+        </button>
+    `;
+
+    popup.appendChild(popupContent);
+    document.body.appendChild(popup);
+
+    // Continue button handler
+    document.getElementById('instructions-continue-btn').addEventListener('click', () => {
+        popup.style.animation = 'fadeOut 0.3s ease-out forwards';
+        popupContent.style.animation = 'slideOut 0.3s ease-out forwards';
+        
+        setTimeout(() => {
+            document.body.removeChild(popup);
+            onContinue();
+        }, 300);
+    }, { once: true });
+}
