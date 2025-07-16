@@ -216,7 +216,7 @@ export const sentryUtils = {
     replay: {
         // Start a new replay session manually
         start: () => {
-            if (typeof window.Sentry !== 'undefined' && window.Sentry.getCurrentHub().getClient()?.getOptions().replaysSessionSampleRate) {
+            if (typeof window.Sentry !== 'undefined') {
                 try {
                     window.Sentry.addBreadcrumb({
                         message: 'Manual replay session started',
@@ -229,7 +229,7 @@ export const sentryUtils = {
                     console.warn('Failed to start manual replay session:', error);
                 }
             } else {
-                console.warn('Session Replay not configured or available');
+                console.warn('Session Replay not available');
             }
         },
 

@@ -610,11 +610,13 @@ export function showInstructionsPopup(phonemeCount, onContinue) {
     popupContent.innerHTML = `
         <h2>🦙 Zanim zaczniemy, krótka instrukcja</h2>
         <div class="instruction-text">
-            <p>
-                Twoim zadaniem będzie nagranie <strong>${phonemeCount} głosek</strong>. Pamiętaj, aby mówić powooli, głośno i wyraźnie. 
-                Jeśli nie jesteś pewien poprawnej wymowy, po kliknięciu czerwonego przycisku usłyszysz głos logopedy. Naśladuj go! 
-                Jeśli nie udało ci się poprawnie nagrać dźwięku, bez obaw, po prostu kliknij mikrofon jeszcze raz i nagraj głoskę.
-            </p>
+            <p>Twoim zadaniem będzie nagranie <strong>${phonemeCount} głosek</strong>.</p>
+            <ul style="text-align: left; margin: 1rem 0; padding-left: 1.5rem;">
+                <li>Mów <strong>powoli</strong>, <strong>głośno</strong> i <strong>wyraźnie</strong></li>
+                <li>Jeśli nie jesteś pewien poprawnej wymowy, kliknij czerwony przycisk - usłyszysz głos logopedy</li>
+                <li>Naśladuj wzorową wymowę!</li>
+                <li>Jeśli nagranie się nie udało, bez obaw - po prostu kliknij mikrofon ponownie</li>
+            </ul>
         </div>
         <button id="instructions-continue-btn" class="btn btn-primary" style="padding: 0.8rem 2rem;">
             Jedziemy!

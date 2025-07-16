@@ -260,18 +260,24 @@ const initializeApp = () => {
     sentryUtils.logInfo('Initializing application', { step: 'init_start' });
     
     // Check if Session Replay is available and log its status
-    if (typeof Sentry !== 'undefined') {
-        const client = Sentry.getCurrentHub().getClient();
-        const options = client?.getOptions();
-        if (options?.replaysSessionSampleRate || options?.replaysOnErrorSampleRate) {
-            sentryUtils.logInfo('Sentry Session Replay initialized', {
-                sessionSampleRate: options.replaysSessionSampleRate,
-                errorSampleRate: options.replaysOnErrorSampleRate,
-                feature: 'session_replay_enabled'
-            });
-            console.log('✅ Sentry Session Replay is active');
-        } else {
-            console.warn('⚠️ Sentry Session Replay not configured');
+    if (typeof window.Sentry !== 'undefined') {
+        try {
+            // In Sentry 8.0.0, we can check for replay integration differently
+            const client = window.Sentry.getClient();
+            const options = client?.getOptions();
+            
+            if (options?.replaysSessionSampleRate || options?.replaysOnErrorSampleRate) {
+                sentryUtils.logInfo('Sentry Session Replay initialized', {
+                    sessionSampleRate: options.replaysSessionSampleRate,
+                    errorSampleRate: options.replaysOnErrorSampleRate,
+                    feature: 'session_replay_enabled'
+                });
+                console.log('✅ Sentry Session Replay is active');
+            } else {
+                console.log('ℹ️ Sentry Session Replay configuration not detected, but may still be active via CDN');
+            }
+        } catch (error) {
+            console.log('ℹ️ Could not check Sentry Session Replay status, but Sentry is loaded:', error.message);
         }
     }
     
