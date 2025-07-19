@@ -49,6 +49,9 @@ waitForSentry().then((Sentry) => {
     Sentry.setTag('sessionId', getSessionId());
     Sentry.setTag('sentry-version', '8.0.0');
     
+    // Set release to fix the warning
+    Sentry.setTag('release', '1.0.0-production');
+    
     console.log('Sentry 8.0.0 configured successfully with CDN loader');
 }).catch((error) => {
     console.warn('Failed to load Sentry CDN:', error);

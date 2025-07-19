@@ -27,7 +27,7 @@ import {
     initializeAudioRecorder,
     cleanupAudioRecorder
 } from './handlers.js';
-import { fetchInitialPhonemes } from './api.js';
+import { fetchInitialPhonemes, submitPendingEmails } from './api.js';
 import * as state from './state.js';
 import { sentryUtils } from './sentry.js';
 
@@ -285,6 +285,11 @@ const initializeApp = () => {
     // Start preloading data in the background
     dataLoadingPromise = preloadData();
     createStartScreen(startApp);
+    
+    // Try to submit any pending emails from previous sessions
+    submitPendingEmails().catch(error => {
+        console.log('Could not submit pending emails:', error);
+    });
     
     sentryUtils.logInfo('Application initialization complete', { step: 'init_complete' });
 };

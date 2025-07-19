@@ -216,7 +216,11 @@ export async function submitAllRecordings(restartHandler) {
         // Single bulk upload request
         const response = await fetch(`${BACKEND_URL}/upload_bulk`, {
             method: "POST",
-            body: formData
+            body: formData,
+            // Add headers for better debugging
+            headers: {
+                'Accept': 'application/json, text/plain, */*'
+            }
         });
 
         const responseText = await response.text();
@@ -282,10 +286,50 @@ export async function submitAllRecordings(restartHandler) {
     } catch (error) {
         console.error("Error during bulk upload:", error);
         
+        // Enhanced error logging for debugging
+        const errorContext = {
+            errorName: error.name,
+            errorMessage: error.message,
+            backendUrl: BACKEND_URL,
+            totalRecordings: totalRecordings,
+            userAgent: navigator.userAgent,
+            online: navigator.onLine,
+            connectionType: navigator.connection?.effectiveType || 'unknown'
+        };
+        
+        sentryUtils.logError('Bulk upload failed', errorContext, error);
+        
+        // Check if this is a network connectivity issue
+        if (!navigator.onLine) {
+            dom.setStatus("Brak połączenia z internetem. Sprawdź połączenie i spróbuj ponownie.", "error");
+            state.setIsUploading(false);
+            dom.hideUploadProgress();
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('disabled');
+            }
+            return;
+        }
+
         // Check if this is a mobile device and we should retry with individual uploads
         const isMobile = isMobileDevice();
         const isLoadFailed = error.message && error.message.includes('Load failed');
         const isNetworkError = error.name === 'TypeError' && (error.message.includes('Load failed') || error.message.includes('Failed to fetch'));
+
+        // Test connectivity to our backend
+        if (isNetworkError || error.message.includes('Failed to fetch')) {
+            console.log('Testing backend connectivity...');
+            const connectivityTest = await testNetworkConnectivity();
+            
+            sentryUtils.logWarning('Network error detected, connectivity test result:', {
+                connectivityResult: connectivityTest,
+                originalError: error.message,
+                willAttemptFallback: true
+            });
+            
+            // Don't return early - let fallback mechanisms handle the issue
+            // The connectivity test might fail for the same reasons as the bulk upload
+        }
         
         if (isMobile && (isLoadFailed || isNetworkError)) {
             console.log('Bulk upload failed on mobile, retrying with individual uploads...');
@@ -296,18 +340,23 @@ export async function submitAllRecordings(restartHandler) {
             sentryUtils.logWarning('Bulk upload failed on mobile, falling back to individual uploads', {
                 originalError: error.message,
                 totalRecordings: totalRecordings,
-                uploadMethod: 'bulk_to_individual_fallback'
+                uploadMethod: 'bulk_to_individual_fallback',
+                deviceInfo: {
+                    userAgent: navigator.userAgent,
+                    isMobile: isMobile,
+                    connectionType: navigator.connection?.effectiveType || 'unknown'
+                }
             });
             
             try {
-                dom.setStatus("Bulk upload failed, retrying with individual uploads...", "warning");
+                dom.setStatus("Próbuję wysłać nagrania pojedynczo...", "warning");
                 dom.updateUploadProgress(10); // Reset progress
                 
                 const { uploadedCount, failedCount } = await submitRecordingsIndividually(recordings, totalRecordings);
                 
                 if (failedCount === 0) {
                     // All individual uploads succeeded
-                    sentryUtils.logInfo('All recordings uploaded successfully via fallback', { 
+                    sentryUtils.logInfo('All recordings uploaded successfully via mobile fallback', { 
                         totalRecordings: totalRecordings,
                         uploadMethod: 'bulk_to_individual_fallback'
                     });
@@ -363,8 +412,68 @@ export async function submitAllRecordings(restartHandler) {
                 });
                 dom.setStatus("Wystąpił błąd podczas wysyłania nagrań.", "error");
             }
+        } else if (isNetworkError || error.message.includes('Failed to fetch')) {
+            // Network error on desktop - also try individual uploads as fallback
+            console.log('Bulk upload failed due to network error, retrying with individual uploads...');
+            
+            sentryUtils.logWarning('Bulk upload failed due to network error, falling back to individual uploads', {
+                originalError: error.message,
+                totalRecordings: totalRecordings,
+                uploadMethod: 'bulk_to_individual_fallback_desktop',
+                isDesktop: !isMobile
+            });
+            
+            try {
+                dom.setStatus("Błąd sieci. Próbuję wysłać nagrania pojedynczo...", "warning");
+                dom.updateUploadProgress(10); // Reset progress
+                
+                const { uploadedCount, failedCount } = await submitRecordingsIndividually(recordings, totalRecordings);
+                
+                if (failedCount === 0) {
+                    // Success via fallback
+                    sentryUtils.logInfo('All recordings uploaded successfully via desktop fallback', { 
+                        totalRecordings: totalRecordings,
+                        uploadMethod: 'bulk_to_individual_fallback_desktop'
+                    });
+                    
+                    state.setHasSubmitted(true);
+                    state.setIsUploading(false);
+
+                    const submitRow = document.querySelector('.control-row.submit-row');
+                    if (submitRow) {
+                        submitRow.style.marginTop = '0.1.2rem';
+                    }
+
+                    await delay(600);
+                    dom.hideUploadProgress();
+                    dom.setStatus(`Wysyłanie zakończone! (${totalRecordings}/${totalRecordings})`, "success");
+
+                    await delay(1000);
+                    dom.applyFadeOutEffect();
+
+                    await delay(1300);
+                    dom.createThankYouScreen(restartHandler, submitEmail);
+                    return;
+                } else {
+                    sentryUtils.logError('Desktop fallback also failed', { 
+                        totalRecordings: totalRecordings,
+                        failedCount: failedCount,
+                        uploadedCount: uploadedCount
+                    });
+                    dom.setStatus(`Częściowe wysłanie: ${uploadedCount}/${totalRecordings} nagrań.`, "warning");
+                }
+                
+            } catch (fallbackError) {
+                console.error("Desktop individual upload fallback failed:", fallbackError);
+                sentryUtils.captureException(fallbackError, { 
+                    context: 'submitAllRecordings_desktop_fallback',
+                    originalError: error.message,
+                    totalRecordings: totalRecordings
+                });
+                dom.setStatus("Wystąpił błąd podczas wysyłania nagrań.", "error");
+            }
         } else {
-            // Regular error handling for non-mobile or non-network errors
+            // Regular error handling for non-network errors
             sentryUtils.captureException(error, { 
                 context: 'submitAllRecordings_bulk',
                 totalRecordings: totalRecordings,
@@ -420,27 +529,90 @@ export async function submitEmail() {
     emailSubmitBtn.disabled = true;
     emailSubmitBtn.classList.add('disabled');
 
-    try {
-        const response = await fetch(`${BACKEND_URL}/users`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email }),
-        });
-        if (!response.ok) {
-            const errorData = await response.json();
-            if (errorData.detail && errorData.detail.includes('already exists')) {
-                showDuplicate();
+    // Add retry logic for email submission
+    let attempts = 0;
+    const maxAttempts = 3;
+    let lastError = null;
+
+    while (attempts < maxAttempts) {
+        attempts++;
+        
+        try {
+            console.log(`Submitting email (attempt ${attempts}/${maxAttempts})`);
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+            
+            const response = await fetch(`${BACKEND_URL}/users`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email }),
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                if (errorData.detail && errorData.detail.includes('already exists')) {
+                    showDuplicate();
+                } else {
+                    showInlineError(errorData.detail || 'Błąd podczas zapisywania adresu email.');
+                }
             } else {
-                showInlineError(errorData.detail || 'Błąd podczas zapisywania adresu email.');
+                showSuccess('Poinformujemy Cię o wynikach badań.');
+                sentryUtils.logInfo('Email submitted successfully', { email: email });
             }
-        } else {
-            showSuccess('Poinformujemy Cię o wynikach badań.');
+            return; // Success - exit function
+            
+        } catch (error) {
+            lastError = error;
+            console.error(`Error submitting email (attempt ${attempts}/${maxAttempts}):`, error);
+            
+            // Check if it's a network error
+            const isNetworkError = error.name === 'TypeError' && 
+                (error.message.includes('Failed to fetch') || error.message.includes('Load failed'));
+            
+            if (isNetworkError && attempts < maxAttempts) {
+                // Wait before retry
+                console.log(`⏳ Network error, waiting before retry...`);
+                await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second wait
+                continue;
+            }
+            
+            // If not network error or max attempts reached, break
+            break;
         }
-    } catch (error) {
-        console.error('Error submitting email:', error);
-        showInlineError('Wystąpił błąd podczas zapisywania adresu email.');
+    }
+    
+    // If we get here, all attempts failed
+    console.error('All email submission attempts failed:', lastError);
+    
+    sentryUtils.captureException(lastError, {
+        context: 'submitEmail_failed',
+        email: email,
+        attempts: attempts,
+        maxAttempts: maxAttempts,
+        errorMessage: lastError?.message || 'Unknown error'
+    });
+    
+    // Try to store email locally as fallback
+    const storedLocally = storeEmailLocally(email);
+    
+    if (storedLocally) {
+        showSuccess('Email zapisany lokalnie. Zostanie wysłany gdy połączenie się poprawi.');
+        sentryUtils.logInfo('Email stored locally for later submission', { email: email });
+    } else {
+        // Check network connectivity and show appropriate message
+        if (!navigator.onLine) {
+            showInlineError('Brak połączenia z internetem. Email nie został zapisany.');
+        } else {
+            showInlineError('Wystąpił błąd sieciowy. Spróbuj ponownie za chwilę.');
+        }
+        
+        // Re-enable the form only if local storage also failed
         emailInput.disabled = false;
         emailSubmitBtn.disabled = false;
         emailSubmitBtn.classList.remove('disabled');
@@ -480,51 +652,178 @@ async function submitRecordingsIndividually(recordings, totalRecordings) {
     let failedCount = 0;
 
     for (const [phoneme, blob] of Object.entries(recordings)) {
-        try {
-            const filename = `${phoneme}_${Date.now()}.wav`;
-            const formData = new FormData();
-            formData.append("audio", blob, filename);
-            formData.append("phoneme", phoneme);
+        let attempts = 0;
+        const maxAttempts = 2; // Try each recording twice
+        let lastError = null;
 
-            // Create fetch options with timeout handling
-            const fetchOptions = {
-                method: "POST",
-                body: formData
-            };
+        while (attempts < maxAttempts && uploadedCount + failedCount < totalRecordings) {
+            attempts++;
+            
+            try {
+                console.log(`Uploading ${phoneme} (attempt ${attempts}/${maxAttempts})`);
+                
+                const filename = `${phoneme}_${Date.now()}.wav`;
+                const formData = new FormData();
+                formData.append("audio", blob, filename);
+                formData.append("phoneme", phoneme);
 
-            // Add timeout if supported
-            if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
-                fetchOptions.signal = AbortSignal.timeout(30000); // 30 seconds timeout
+                // Create fetch options with timeout handling
+                const fetchOptions = {
+                    method: "POST",
+                    body: formData
+                };
+
+                // Add timeout if supported
+                if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+                    fetchOptions.signal = AbortSignal.timeout(45000); // 45 seconds timeout (longer for individual uploads)
+                }
+
+                const response = await fetch(`${BACKEND_URL}/upload`, fetchOptions);
+
+                if (!response.ok) {
+                    const errorText = await response.text().catch(() => 'Unknown error');
+                    throw new Error(`Upload failed for ${phoneme}: ${response.status} - ${errorText}`);
+                }
+
+                uploadedCount++;
+                const progress = Math.min(95, (uploadedCount / totalRecordings) * 100); // Cap at 95% until all done
+                dom.updateUploadProgress(progress);
+
+                console.log(`✅ Successfully uploaded ${phoneme} (${uploadedCount}/${totalRecordings})`);
+                
+                // Break out of retry loop on success
+                break;
+
+            } catch (error) {
+                lastError = error;
+                console.error(`❌ Error uploading ${phoneme} (attempt ${attempts}/${maxAttempts}):`, error);
+                
+                // Wait before retry (except on last attempt)
+                if (attempts < maxAttempts) {
+                    console.log(`⏳ Waiting before retry...`);
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second wait
+                }
             }
+        }
 
-            const response = await fetch(`${BACKEND_URL}/upload`, fetchOptions);
-
-            if (!response.ok) {
-                const errorText = await response.text().catch(() => 'Unknown error');
-                throw new Error(`Upload failed for ${phoneme}: ${response.status} - ${errorText}`);
-            }
-
-            uploadedCount++;
-            const progress = (uploadedCount / totalRecordings) * 100;
-            dom.updateUploadProgress(progress);
-
-            console.log(`Successfully uploaded ${phoneme} (${uploadedCount}/${totalRecordings})`);
-
-            // Small delay between uploads to prevent overwhelming mobile
-            await new Promise(resolve => setTimeout(resolve, 200));
-
-        } catch (error) {
-            console.error(`Error uploading ${phoneme}:`, error);
-            sentryUtils.captureException(error, { 
-                context: 'uploadRecording_individual',
-                phoneme: phoneme,
-                attempt: 'mobile_fallback',
-                blobSize: blob.size,
-                errorMessage: error.message
-            });
+        // If we exhausted all attempts, count as failed
+        if (attempts >= maxAttempts) {
             failedCount++;
+            sentryUtils.captureException(lastError, { 
+                context: 'uploadRecording_individual_failed',
+                phoneme: phoneme,
+                attempt: 'individual_fallback',
+                blobSize: blob.size,
+                maxAttempts: maxAttempts,
+                errorMessage: lastError?.message || 'Unknown error'
+            });
+        }
+
+        // Small delay between different phonemes to prevent overwhelming
+        if (uploadedCount + failedCount < totalRecordings) {
+            await new Promise(resolve => setTimeout(resolve, 300));
         }
     }
 
+    // Set final progress
+    if (failedCount === 0) {
+        dom.updateUploadProgress(100);
+    }
+
+    console.log(`📊 Individual upload summary: ${uploadedCount} succeeded, ${failedCount} failed`);
     return { uploadedCount, failedCount };
+}
+
+// Test network connectivity to backend
+export async function testNetworkConnectivity() {
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+        
+        const response = await fetch(`${BACKEND_URL}/phonemes`, {
+            method: 'HEAD', // Just check if endpoint is reachable
+            signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        return {
+            success: response.ok,
+            status: response.status,
+            message: response.ok ? 'Network connectivity OK' : `Server returned ${response.status}`
+        };
+    } catch (error) {
+        return {
+            success: false,
+            status: 0,
+            message: `Network error: ${error.message}`
+        };
+    }
+}
+
+// Fallback email storage for offline scenarios
+function storeEmailLocally(email) {
+    try {
+        const storedEmails = JSON.parse(localStorage.getItem('pendingEmails') || '[]');
+        storedEmails.push({
+            email: email,
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent
+        });
+        localStorage.setItem('pendingEmails', JSON.stringify(storedEmails));
+        return true;
+    } catch (error) {
+        console.error('Failed to store email locally:', error);
+        return false;
+    }
+}
+
+// Try to submit any locally stored emails when network is available
+export async function submitPendingEmails() {
+    try {
+        const pendingEmails = JSON.parse(localStorage.getItem('pendingEmails') || '[]');
+        if (pendingEmails.length === 0) return;
+        
+        console.log(`Found ${pendingEmails.length} pending emails to submit`);
+        
+        const successfullySubmitted = [];
+        
+        for (const emailData of pendingEmails) {
+            try {
+                const response = await fetch(`${BACKEND_URL}/users`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        email: emailData.email,
+                        submittedAt: emailData.timestamp 
+                    }),
+                    signal: AbortSignal.timeout(5000)
+                });
+                
+                if (response.ok) {
+                    successfullySubmitted.push(emailData);
+                    console.log(`✅ Successfully submitted pending email: ${emailData.email}`);
+                }
+            } catch (error) {
+                console.log(`❌ Failed to submit pending email: ${emailData.email}`, error);
+            }
+        }
+        
+        // Remove successfully submitted emails
+        if (successfullySubmitted.length > 0) {
+            const remainingEmails = pendingEmails.filter(email => 
+                !successfullySubmitted.some(submitted => submitted.email === email.email)
+            );
+            localStorage.setItem('pendingEmails', JSON.stringify(remainingEmails));
+            
+            sentryUtils.logInfo('Submitted pending emails', {
+                submitted: successfullySubmitted.length,
+                remaining: remainingEmails.length
+            });
+        }
+        
+    } catch (error) {
+        console.error('Error submitting pending emails:', error);
+    }
 }
