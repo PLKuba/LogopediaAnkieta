@@ -612,11 +612,17 @@ export function showInstructionsPopup(phonemeCount, onContinue) {
         <div class="instruction-text">
             <p>Twoim zadaniem będzie nagranie <strong>${phonemeCount} głosek</strong>.</p>
             <ul style="text-align: left; margin: 1rem 0; padding-left: 1.5rem;">
-                <li>Mów <strong>powoli</strong>, <strong>głośno</strong> i <strong>wyraźnie</strong></li>
-                <li>Jeśli nie jesteś pewien poprawnej wymowy, kliknij czerwony przycisk - usłyszysz głos logopedy</li>
-                <li>Naśladuj wzorową wymowę!</li>
+                <li>Bez obaw twoje nagrania są w <strong style="color: var(--primary-color, #007bff);">pełni anonimowe</strong>, nie zbierane są <strong style="color: var(--primary-color, #007bff);">żadne</strong> dodatkowe informacje oprócz głosu</li>
+                <li>Aby rozpocząć nagrywanie, kliknij <strong style="color: #FC5C65;">czerwony</strong> przycisk mikrofonu</li>
                 <li>Jeśli nagranie się nie udało, bez obaw - po prostu kliknij mikrofon ponownie</li>
+                <li>Jeśli nie jesteś pewien poprawnej wymowy, kliknij <strong style="color: #FFD23F;">żółty</strong> przycisk - usłyszysz głos logopedy</li>
             </ul>
+            <p style="font-size: 0.9rem; margin-top: 1.5rem; color: var(--text-secondary-color);">
+                Korzystając z aplikacji, wyrażasz zgodę na przetwarzanie nagrań głosowych zgodnie z 
+                <a href="privacy-policy" target="_blank" style="color: var(--primary-color); text-decoration: underline;">
+                    Polityką Prywatności
+                </a>.
+            </p>
         </div>
         <button id="instructions-continue-btn" class="btn btn-primary" style="padding: 0.8rem 2rem;">
             Jedziemy!

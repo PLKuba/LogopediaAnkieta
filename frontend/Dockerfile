@@ -23,8 +23,11 @@ COPY . .
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Expose port 80
-EXPOSE 80
+# Copy Nginx configuration file
+COPY default.conf /etc/nginx/conf.d/default.conf
+
+# Expose port 8080
+EXPOSE 8080
 
 # Entrypoint and default command
 ENTRYPOINT ["/entrypoint.sh"]
