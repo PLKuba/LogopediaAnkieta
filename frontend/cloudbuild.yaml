@@ -1,0 +1,9 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/ankieta-logopedyczna-cloud-run/ankieta-frontend', '.']
+
+images:
+  - 'gcr.io/ankieta-logopedyczna-cloud-run/ankieta-frontend'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

@@ -26,10 +26,9 @@ jobs:
       - name: Set up gcloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Build & push backend image
+      - name: Build backend using Cloud Build
         run: |
-          gcloud builds submit ./backend \
-            --tag gcr.io/ankieta-logopedyczna-cloud-run/ankieta-backend
+          gcloud builds submit ./backend
 
       - name: Deploy backend to Cloud Run
         run: |
@@ -39,10 +38,9 @@ jobs:
             --region europe-west1 \
             --allow-unauthenticated
 
-      - name: Build & push frontend image
+      - name: Build frontend using Cloud Build
         run: |
-          gcloud builds submit ./frontend \
-            --tag gcr.io/ankieta-logopedyczna-cloud-run/ankieta-frontend
+          gcloud builds submit ./frontend
 
       - name: Deploy frontend to Cloud Run
         run: |
