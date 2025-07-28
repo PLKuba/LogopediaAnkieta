@@ -26,9 +26,9 @@ jobs:
       - name: Set up gcloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Build backend using Cloud Build
+      - name: Build backend image with Cloud Build
         run: |
-          gcloud builds submit ./backend
+          gcloud builds submit ./backend --config=./backend/cloudbuild.yaml
 
       - name: Deploy backend to Cloud Run
         run: |
@@ -38,9 +38,9 @@ jobs:
             --region europe-west1 \
             --allow-unauthenticated
 
-      - name: Build frontend using Cloud Build
+      - name: Build frontend image with Cloud Build
         run: |
-          gcloud builds submit ./frontend
+          gcloud builds submit ./frontend --config=./frontend/cloudbuild.yaml
 
       - name: Deploy frontend to Cloud Run
         run: |
