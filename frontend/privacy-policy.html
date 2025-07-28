@@ -4,29 +4,50 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Polityka Prywatności - Ankieta Głosowa</title>
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/components.css">
-    <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/responsive.css">
     <style>
+        :root {
+            --primary-color: #4B7BEC;
+            --background-color: #F8FAFF;
+            --text-primary-color: #2C3A47;
+            --background-secondary-color: #f8f9fa;
+            --border-color: #e9ecef;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        html {
+            scroll-behavior: smooth;
+        }
+        
         body {
             margin: 0;
             padding: 0;
-            font-family: var(--font-family, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif);
-            background-color: var(--background-color, #ffffff);
-            color: var(--text-primary-color, #333333);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-primary-color);
             display: block;
             align-items: unset;
             justify-content: unset;
+            min-height: unset;
+            height: auto;
+            overflow-x: hidden;
+            overflow-y: auto;
+            position: static;
         }
         
         .privacy-policy-container {
             max-width: 800px;
-            margin: 0 auto;
+            margin: 10% auto 0 auto;
             padding: 2rem 2rem 10vh 2rem;
             line-height: 1.6;
             color: var(--text-primary-color, #333333);
             box-sizing: border-box;
+            position: relative;
+            top: 0;
         }
         
         .privacy-policy h1 {
@@ -84,8 +105,8 @@
         
         @media (max-width: 480px) {
             body {
-                overflow-y: auto !important;
-                height: auto !important;
+                overflow-y: auto;
+                height: auto;
             }
             
             .privacy-policy-container {
