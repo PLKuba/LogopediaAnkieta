@@ -51,7 +51,7 @@ supabase_public: Client = create_client(SUPABASE_URL, SUPABASE_KEY_PUBLIC)
 
 @app.get("/")
 async def ping():
-    return "Pong!"
+    return "Pong! Pong!"
 
 
 @app.post("/upload")
