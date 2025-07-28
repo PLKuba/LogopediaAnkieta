@@ -28,7 +28,7 @@
 @media (max-width: 600px) {
   body {
     font-size: 14px;
-    overflow-y: hidden;
+    overflow-y: auto;
     background-color: white;
   }
   .container {
