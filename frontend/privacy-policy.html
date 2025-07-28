@@ -70,7 +70,7 @@
         
         @media (max-width: 768px) {
             .privacy-policy-container {
-                padding: 1rem;
+                padding: 1rem 1rem 15vh 1rem;
             }
             
             .privacy-policy h1 {
@@ -79,6 +79,26 @@
             
             .privacy-policy h2 {
                 font-size: 1.2rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            body {
+                overflow-y: auto !important;
+                height: auto !important;
+            }
+            
+            .privacy-policy-container {
+                padding: 0.5rem 0.5rem 20vh 0.5rem;
+                min-height: auto;
+            }
+            
+            .privacy-policy h1 {
+                font-size: 1.3rem;
+            }
+            
+            .privacy-policy h2 {
+                font-size: 1.1rem;
             }
         }
     </style>
