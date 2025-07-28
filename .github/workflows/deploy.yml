@@ -1,0 +1,60 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/592243715778/locations/global/workloadIdentityPools/github-pool/providers/github-provider-v2'
+          service_account: 'github-actions-deployer@ankieta-logopedyczna-cloud-run.iam.gserviceaccount.com'
+
+      - name: Set up gcloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build & push backend image
+        run: |
+          gcloud builds submit ./backend \
+            --tag gcr.io/ankieta-logopedyczna-cloud-run/ankieta-backend
+
+      - name: Deploy backend to Cloud Run
+        run: |
+          gcloud run deploy ankieta-backend \
+            --image gcr.io/ankieta-logopedyczna-cloud-run/ankieta-backend \
+            --platform managed \
+            --region europe-west1 \
+            --allow-unauthenticated
+
+      - name: Build & push frontend image
+        run: |
+          gcloud builds submit ./frontend \
+            --tag gcr.io/ankieta-logopedyczna-cloud-run/ankieta-frontend
+
+      - name: Deploy frontend to Cloud Run
+        run: |
+          gcloud run deploy ankieta-frontend \
+            --image gcr.io/ankieta-logopedyczna-cloud-run/ankieta-frontend \
+            --platform managed \
+            --region europe-west1 \
+            --allow-unauthenticated
+
+      - name: Purge Cloudflare cache
+        run: |
+          curl -X POST "https://api.cloudflare.com/client/v4/zones/${{ secrets.CLOUDFLARE_ZONE_ID }}/purge_cache" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --data '{"purge_everything":true}'
